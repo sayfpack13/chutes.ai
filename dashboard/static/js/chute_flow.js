@@ -96,22 +96,70 @@ document.querySelectorAll(".js-step-run").forEach((btn) => {
           setStepState(step, "err", !ok ? "Request failed" : summarizeApiData(data) || "Failed");
         }
       } else if (step === "build") {
-        const { ok, data } = await postJson(`/api/build/${encodeURIComponent(name)}`);
-        setStepOut(step, JSON.stringify(data, null, 2) + (ok ? "" : "\n\nHTTP error"));
+        const outEl = document.getElementById("step-build-out");
+        outEl?.closest("details")?.setAttribute("open", "");
+        let logBuf = "";
+        const url = `/api/build/${encodeURIComponent(name)}/stream`;
+        const { ok, data } = await window.consumeChutesNdjsonStream(url, {
+          onLog(msg) {
+            logBuf += (logBuf ? "\n" : "") + msg;
+            if (outEl) {
+              outEl.textContent = logBuf;
+              outEl.scrollTop = outEl.scrollHeight;
+            }
+            const tail = msg.length > 100 ? "…" + msg.slice(-100) : msg;
+            setStepState(step, "running", tail || "Running…");
+          },
+          onResult(ev) {
+            setStepOut(step, JSON.stringify(ev, null, 2));
+          },
+          onHttpError(status, text) {
+            setStepOut(step, `HTTP ${status}\n${text}`);
+            setStepState(step, "err", `HTTP ${status}`);
+          },
+        });
+        const hint = friendlyCliError((data && data.stderr) || (data && data.stdout));
         if (ok && data && data.ok) {
           setStepState(step, "ok", "Build finished.");
         } else {
-          const friendly = (data && data.hint) || friendlyCliError(data && data.stderr);
-          setStepState(step, "err", friendly || (data && data.stderr) || "Build failed — open Show details");
+          setStepState(
+            step,
+            "err",
+            (data && data.hint) || hint || (data && data.stderr) || "Build failed — open Show details"
+          );
         }
       } else if (step === "publish") {
-        const { ok, data } = await postJson(`/api/deploy/${encodeURIComponent(name)}`);
-        setStepOut(step, JSON.stringify(data, null, 2) + (ok ? "" : "\n\nHTTP error"));
+        const outEl = document.getElementById("step-publish-out");
+        outEl?.closest("details")?.setAttribute("open", "");
+        let logBuf = "";
+        const url = `/api/deploy/${encodeURIComponent(name)}/stream`;
+        const { ok, data } = await window.consumeChutesNdjsonStream(url, {
+          onLog(msg) {
+            logBuf += (logBuf ? "\n" : "") + msg;
+            if (outEl) {
+              outEl.textContent = logBuf;
+              outEl.scrollTop = outEl.scrollHeight;
+            }
+            const tail = msg.length > 100 ? "…" + msg.slice(-100) : msg;
+            setStepState(step, "running", tail || "Publishing…");
+          },
+          onResult(ev) {
+            setStepOut(step, JSON.stringify(ev, null, 2));
+          },
+          onHttpError(status, text) {
+            setStepOut(step, `HTTP ${status}\n${text}`);
+            setStepState(step, "err", `HTTP ${status}`);
+          },
+        });
+        const hint = friendlyCliError((data && data.stderr) || (data && data.stdout));
         if (ok && data && data.ok) {
           setStepState(step, "ok", "Published. Check status below.");
         } else {
-          const friendly = (data && data.hint) || friendlyCliError(data && data.stderr);
-          setStepState(step, "err", friendly || (data && data.stderr) || "Publish failed — open Show details");
+          setStepState(
+            step,
+            "err",
+            (data && data.hint) || hint || (data && data.stderr) || "Publish failed — open Show details"
+          );
         }
       } else if (step === "status") {
         const res = await fetch(`/api/platform/chutes?limit=100&page=0&name=${encodeURIComponent(name)}`);
