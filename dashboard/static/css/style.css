@@ -1,0 +1,111 @@
+:root {
+  --bg: #0f1115;
+  --panel: #161a22;
+  --text: #e8eaed;
+  --muted: #9aa0a6;
+  --accent: #6c9eff;
+  --danger: #f28b82;
+  --border: #2a303c;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.brand { font-weight: 700; color: var(--text); }
+nav a { margin-left: 16px; }
+
+.container { padding: 24px 20px; flex: 1; max-width: 1100px; width: 100%; margin: 0 auto; }
+
+.foot {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+h1 { margin-top: 0; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--mono); font-size: 0.85rem; }
+.err { color: var(--danger); }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.table th, .table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.table th { background: #1b2130; font-weight: 600; }
+.actions { white-space: nowrap; }
+.actions .btn { margin-right: 6px; margin-bottom: 4px; }
+
+.btn {
+  background: var(--accent);
+  color: #0b1020;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn.secondary { background: #3c4454; color: var(--text); }
+.btn.danger { background: #5c2b2b; color: #fdd; }
+
+.form label { display: block; margin-bottom: 12px; }
+.form input, .form select, .form textarea {
+  width: 100%;
+  max-width: 520px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #0b0e14;
+  color: var(--text);
+}
+.form.stack textarea.code {
+  max-width: none;
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.inline { display: inline; }
+
+.log {
+  margin-top: 16px;
+  padding: 12px;
+  background: #0b0e14;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}

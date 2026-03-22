@@ -1,0 +1,71 @@
+name: whisper-template
+chute_type: speech
+username: your_username
+tagline: Speech Recognition with Whisper
+description: '# Whisper - Speech Recognition
+
+
+  Transcribe audio to text using OpenAI''s Whisper model.
+
+
+  ## Features
+
+  - Multi-language support
+
+  - Timestamp-level transcription
+
+  - Various model sizes
+
+  - Word-level timestamps
+
+  '
+model:
+  source: huggingface
+  name: openai/whisper-large-v3
+  revision: main
+  trust_remote_code: false
+  custom_download_url: null
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 10
+  include:
+  - rtx4090
+  - rtx3090
+  - a100
+  - a10g
+  exclude: []
+docker:
+  base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
+  python_version: '3.11'
+  system_packages:
+  - git
+  - curl
+  - ffmpeg
+  python_packages:
+  - torch
+  - transformers
+  - accelerate
+  - librosa
+  - soundfile
+  extra_pip_index: https://download.pytorch.org/whl/cu121
+  env_vars:
+    HF_HOME: /app/models
+  image_name: ''
+  image_tag: 1.0.0
+  image_readme: ''
+api:
+- path: /transcribe
+  method: POST
+  input_schema: TranscriptionRequest
+  output_content_type: application/json
+  stream: false
+  description: Transcribe audio to text
+- path: /health
+  method: GET
+  input_schema: None
+  output_content_type: application/json
+  stream: false
+  description: Health check endpoint
+concurrency: 4
+allow_external_egress: true
+shutdown_after_seconds: 300

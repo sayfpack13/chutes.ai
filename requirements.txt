@@ -1,0 +1,16 @@
+# Chutes AI Manager (dashboard + CLI)
+chutes>=0.1.0
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+pydantic>=2.0.0
+PyYAML>=6.0
+Jinja2>=3.1.0
+python-multipart>=0.0.6
+
+# Optional: local MusicGen / ML experiments (not required for dashboard only)
+# torch>=2.0.0
+# torchaudio>=2.0.0
+# audiocraft>=1.0.0
+# transformers>=4.30.0
+# accelerate>=0.20.0
+# loguru>=0.7.0

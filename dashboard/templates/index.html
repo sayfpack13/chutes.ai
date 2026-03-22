@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Configs · Chutes AI Manager{% endblock %}
+{% block content %}
+<h1>Chute configs</h1>
+<p class="muted">Files in <code>configs/*.yaml</code>. Use <strong>Generate</strong> to write <code>chute_packages/&lt;name&gt;_chute.py</code>.</p>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Username</th>
+      <th>Model</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      <td><a href="/config/{{ row.name }}/edit">{{ row.name }}</a></td>
+      {% if row.error %}
+      <td colspan="4" class="err">{{ row.error }}</td>
+      {% else %}
+      <td>{{ row.type }}</td>
+      <td>{{ row.username }}</td>
+      <td class="mono">{{ row.model }}</td>
+      <td class="actions">
+        <button type="button" class="btn js-generate" data-name="{{ row.name }}">Generate</button>
+        <button type="button" class="btn secondary js-build" data-name="{{ row.name }}">Build</button>
+        <button type="button" class="btn secondary js-deploy" data-name="{{ row.name }}">Deploy</button>
+        <form method="post" action="/config/{{ row.name }}/delete" class="inline" onsubmit="return confirm('Delete {{ row.name }}?');">
+          <button type="submit" class="btn danger">Delete</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if not rows %}
+<p>No configs yet. <a href="/config/new">Create one from a template</a> or run <code>python cli.py seed-templates</code>.</p>
+{% endif %}
+
+<pre id="out" class="log" hidden></pre>
+<script src="/static/js/app.js"></script>
+{% endblock %}

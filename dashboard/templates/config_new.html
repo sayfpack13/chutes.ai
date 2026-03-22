@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}New chute · Chutes AI Manager{% endblock %}
+{% block content %}
+<h1>New chute from template</h1>
+<form method="post" action="/config/new" class="form">
+  <label>Template
+    <select name="template">
+      {% for t in templates %}
+      <option value="{{ t }}" {% if t == selected %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Config name (slug)
+    <input name="name" required placeholder="my-music-gen" pattern="[a-zA-Z0-9_-]+" />
+  </label>
+  <label>Chutes username (optional)
+    <input name="username" placeholder="your_username" />
+  </label>
+  <button type="submit" class="btn">Create config</button>
+  <a class="muted" href="/">Cancel</a>
+</form>
+{% endblock %}

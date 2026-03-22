@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ name }} · Chutes AI Manager{% endblock %}
+{% block content %}
+<h1>Edit <code>{{ name }}.yaml</code></h1>
+<p class="muted">Set <code>username</code>, <code>chute_type</code> (music, image, llm, …), model, hardware, and docker packages. Then generate Python.</p>
+<form method="post" action="/config/{{ name }}/edit" class="form stack">
+  <textarea name="yaml_text" rows="28" class="code">{{ yaml_text }}</textarea>
+  <div class="row">
+    <button type="submit" class="btn">Save YAML</button>
+    <button type="button" class="btn secondary js-generate" data-name="{{ name }}">Generate code</button>
+    <button type="button" class="btn secondary js-build" data-name="{{ name }}">Build (CLI)</button>
+    <button type="button" class="btn secondary js-deploy" data-name="{{ name }}">Deploy (CLI)</button>
+    <a href="/">Back</a>
+  </div>
+</form>
+<pre id="out" class="log" hidden></pre>
+<script src="/static/js/app.js"></script>
+{% endblock %}

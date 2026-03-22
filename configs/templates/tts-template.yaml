@@ -1,0 +1,71 @@
+name: tts-template
+chute_type: tts
+username: your_username
+tagline: Text-to-Speech with Coqui XTTS
+description: '# Text-to-Speech
+
+
+  Convert text to natural-sounding speech.
+
+
+  ## Features
+
+  - Multiple voice cloning
+
+  - Natural prosody
+
+  - Multiple languages
+
+  - Voice reference support
+
+  '
+model:
+  source: huggingface
+  name: coqui/XTTS-v2
+  revision: main
+  trust_remote_code: false
+  custom_download_url: null
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 12
+  include:
+  - rtx4090
+  - rtx3090
+  - a100
+  exclude: []
+docker:
+  base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
+  python_version: '3.11'
+  system_packages:
+  - git
+  - curl
+  - ffmpeg
+  - espeak-ng
+  python_packages:
+  - torch
+  - torchaudio
+  - TTS
+  - transformers
+  extra_pip_index: https://download.pytorch.org/whl/cu121
+  env_vars:
+    HF_HOME: /app/models
+    TTS_HOME: /app/models
+  image_name: ''
+  image_tag: 1.0.0
+  image_readme: ''
+api:
+- path: /synthesize
+  method: POST
+  input_schema: TTSSynthesizeRequest
+  output_content_type: audio/wav
+  stream: false
+  description: Convert text to speech
+- path: /health
+  method: GET
+  input_schema: None
+  output_content_type: application/json
+  stream: false
+  description: Health check endpoint
+concurrency: 2
+allow_external_egress: true
+shutdown_after_seconds: 300

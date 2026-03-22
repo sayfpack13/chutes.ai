@@ -1,0 +1,68 @@
+name: vision-template
+chute_type: vision
+username: your_username
+tagline: Vision Language Model with LLaVA
+description: '# Vision Language Model
+
+
+  Analyze images and answer questions using vision-language AI.
+
+
+  ## Features
+
+  - Image understanding
+
+  - Visual question answering
+
+  - Multiple image inputs
+
+  - Detailed descriptions
+
+  '
+model:
+  source: huggingface
+  name: llava-hf/llava-1.5-7b-hf
+  revision: main
+  trust_remote_code: false
+  custom_download_url: null
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 16
+  include:
+  - rtx4090
+  - rtx3090
+  - a100
+  exclude: []
+docker:
+  base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
+  python_version: '3.11'
+  system_packages:
+  - git
+  - curl
+  python_packages:
+  - torch
+  - transformers
+  - accelerate
+  - Pillow
+  extra_pip_index: https://download.pytorch.org/whl/cu121
+  env_vars:
+    HF_HOME: /app/models
+  image_name: ''
+  image_tag: 1.0.0
+  image_readme: ''
+api:
+- path: /analyze
+  method: POST
+  input_schema: ImageAnalysisRequest
+  output_content_type: application/json
+  stream: false
+  description: Analyze image and answer question
+- path: /health
+  method: GET
+  input_schema: None
+  output_content_type: application/json
+  stream: false
+  description: Health check endpoint
+concurrency: 4
+allow_external_egress: true
+shutdown_after_seconds: 300
