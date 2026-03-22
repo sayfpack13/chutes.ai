@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Playground — chute{% endblock %}
+{% block content %}
+<p class="page-kicker"><a href="/playground">← Playground hub</a></p>
+<h1>Chute playground</h1>
+
+{% if not api_key_configured %}
+<div class="warn">
+  <strong>No API key on file.</strong> Save one under <a href="/settings/account">Account</a>, then reload this page.
+</div>
+{% endif %}
+
+<section class="playground-section" aria-labelledby="pg-chute-title">
+  <h2 class="home-section__title" id="pg-chute-title">Deployed chute</h2>
+  <p class="muted small">
+    <strong>Dynamic form:</strong> enter the chute base URL, <strong>Fetch OpenAPI</strong>, pick an operation — fields match that endpoint's JSON schema.
+    <strong>Manual:</strong> use "Manual JSON" to type the body yourself. Your API key is added on the server; only <code>https://*.chutes.ai</code> is allowed.
+  </p>
+
+  <form id="cc-form" class="form playground-form" {% if not api_key_configured %}inert{% endif %}>
+    <label>Base URL
+      <input type="url" id="cc-base" class="pf-control" required placeholder="https://username-my-chute.chutes.ai" autocomplete="off" value="{{ chute_url or '' }}" />
+    </label>
+    <div class="row" style="flex-wrap: wrap; gap: 8px; align-items: center;">
+      <button type="button" class="btn secondary sm" id="cc-fetch-openapi">Fetch OpenAPI</button>
+      <button type="button" class="btn secondary sm" id="cc-use-manual">Manual JSON</button>
+      <span id="cc-openapi-status" class="muted small" aria-live="polite"></span>
+    </div>
+    <label id="cc-op-label" hidden>Operation
+      <select id="cc-op" class="pf-control" hidden aria-label="OpenAPI operation"></select>
+    </label>
+    <label>Path
+      <input type="text" id="cc-path" class="pf-control" value="/v1/chat/completions" autocomplete="off" />
+    </label>
+    <label>Method
+      <select id="cc-method" class="pf-control">
+        <option value="POST" selected>POST</option>
+        <option value="GET">GET</option>
+        <option value="PUT">PUT</option>
+        <option value="DELETE">DELETE</option>
+      </select>
+    </label>
+    <div id="cc-dyn-wrap" class="playground-fields" hidden>
+      <p class="muted small">Request fields from OpenAPI</p>
+      <div id="cc-dyn-fields"></div>
+    </div>
+    <label id="cc-json-wrap">JSON body (manual)
+      <textarea id="cc-json" class="pf-control mono" rows="10" spellcheck="false">{
+  "model": "default",
+  "messages": [
+    { "role": "user", "content": "Hello!" }
+  ]
+}</textarea>
+    </label>
+    <div class="row">
+      <button type="submit" class="btn" id="cc-submit">Send</button>
+      <span id="cc-status" class="muted small" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <section class="playground-output" id="cc-output" hidden>
+    <h3 class="home-section__title">Response</h3>
+    <div id="cc-out-media-wrap" hidden>
+      <img id="cc-out-img" alt="Response image" class="playground-output__img" />
+    </div>
+    <div id="cc-out-audio-wrap" hidden>
+      <audio id="cc-out-audio" controls class="playground-output__audio"></audio>
+    </div>
+    <pre id="cc-out-pre" class="log log--compact"></pre>
+  </section>
+</section>
+
+<script src="/static/js/playground_fields.js"></script>
+<script src="/static/js/chute_openapi_playground.js"></script>
+{% if chute_url %}
+<script>
+(function(){
+  var u = decodeURIComponent("{{ chute_url | e('js') }}");
+  var inp = document.getElementById('cc-base');
+  if (inp) inp.value = u;
+  setTimeout(function(){
+    var btn = document.getElementById('cc-fetch-openapi');
+    if (btn) btn.click();
+  }, 200);
+})();
+</script>
+{% endif %}
+{% endblock %}

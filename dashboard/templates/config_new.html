@@ -1,22 +1,55 @@
 {% extends "base.html" %}
 {% block title %}New chute · Chutes{% endblock %}
 {% block content %}
-<h1>New chute from template</h1>
-<form method="post" action="/config/new" class="form">
-  <label>Template
-    <select name="template">
-      {% for t in templates %}
-      <option value="{{ t }}" {% if t == selected %}selected{% endif %}>{{ t }}</option>
-      {% endfor %}
-    </select>
-  </label>
+<h1>New chute</h1>
+<p class="muted small">Categories match the main <strong>Type</strong> list on <a href="https://chutes.ai" target="_blank" rel="noopener">chutes.ai</a> (LLM, image, video, TTS, STT, music, embeddings, moderation). <strong>Pre-built</strong> uses Chutes platform images. <strong>Custom image</strong> generates an <code>Image(...)</code> you build on Chutes.</p>
+
+<form method="post" action="/config/new" class="form form-new-chute">
+  {% set ns = namespace(first_radio=true) %}
+  <div class="template-catalog" role="group" aria-label="Chute template">
+    {% for group in template_groups %}
+    <section class="template-group" aria-labelledby="tg-{{ group.id }}">
+      <h2 class="template-group-title" id="tg-{{ group.id }}">{{ group.label }}</h2>
+      <p class="template-group-blurb muted small">{{ group.blurb }}</p>
+      <div class="template-grid">
+        {% for item in group.options %}
+        <label class="template-choice">
+          <input
+            type="radio"
+            name="template"
+            value="{{ item.key }}"
+            class="template-radio"
+            {% if item.key == selected %}checked{% endif %}
+            {% if ns.first_radio %}required{% endif %}
+          />
+          {% if ns.first_radio %}{% set ns.first_radio = false %}{% endif %}
+          <span class="template-choice-body">
+            <span class="template-choice-top">
+              <span class="template-choice-title">{{ item.title }}</span>
+              {% if item.stack == "platform" %}
+              <span class="template-badge platform">Pre-built</span>
+              {% else %}
+              <span class="template-badge custom">Custom image</span>
+              {% endif %}
+            </span>
+            <span class="template-choice-sub muted small">{{ item.subtitle }}</span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
   <label>Config name (slug)
-    <input name="name" required placeholder="my-music-gen" pattern="[a-zA-Z0-9_-]+" />
+    <input name="name" required placeholder="my-llm" pattern="[a-zA-Z0-9_-]+" autocomplete="off" />
   </label>
   <label>Chutes username (optional)
-    <input name="username" placeholder="your_username" />
+    <input name="username" placeholder="your_username" autocomplete="username" />
   </label>
-  <button type="submit" class="btn">Create config</button>
-  <a class="muted" href="/">Cancel</a>
+  <div class="row">
+    <button type="submit" class="btn">Create config</button>
+    <a class="muted" href="/">Cancel</a>
+  </div>
 </form>
 {% endblock %}

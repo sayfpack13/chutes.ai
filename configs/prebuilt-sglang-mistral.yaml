@@ -1,0 +1,36 @@
+name: prebuilt-sglang-mistral
+chute_type: sglang
+username: your_username
+tagline: SGLang — Mistral 7B
+description: |-
+  # SGLang · Mistral 7B Instruct
+
+  Same family as the default vLLM starter, served with SGLang’s pre-built image.
+model:
+  source: huggingface
+  name: mistralai/Mistral-7B-Instruct-v0.3
+  revision: main
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 24
+  include: []
+  exclude: []
+docker:
+  base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
+  python_version: "3.11"
+  system_packages: [git, curl]
+  python_packages: []
+api:
+  - path: /v1/chat/completions
+    method: POST
+    input_schema: ChatCompletion
+    output_content_type: application/json
+    description: Chat (SGLang)
+concurrency: 32
+allow_external_egress: false
+shutdown_after_seconds: 300
+engine_args:
+  trust_remote_code: true
+  context_length: 8192
+template_max_instances: 1
+template_scaling_threshold: 0.75

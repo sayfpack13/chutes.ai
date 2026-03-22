@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Playground — image{% endblock %}
+{% block content %}
+<p class="page-kicker"><a href="/playground">← Playground hub</a></p>
+<h1>Image playground</h1>
+
+<section class="playground-section" aria-labelledby="pg-image-title">
+  <h2 class="home-section__title" id="pg-image-title">Image generation</h2>
+  <p class="muted page-lead">
+    Dynamic fields from <code>image.chutes.ai</code> OpenAPI (with fallback defaults). Submit builds the JSON body and proxies through this server.
+  </p>
+
+{% if not api_key_configured %}
+<div class="warn">
+  <strong>No API key on file.</strong> Save one under <a href="/settings/account">Account</a>, then reload this page.
+</div>
+{% endif %}
+
+  <div id="pg-meta" class="playground-meta muted small" aria-live="polite"></div>
+
+  <form id="pg-form" class="form playground-form" {% if not api_key_configured %}inert{% endif %}>
+    <div id="pg-fields" class="playground-fields"></div>
+    <div class="row">
+      <button type="submit" class="btn" id="pg-submit">Generate</button>
+      <span id="pg-status" class="muted small" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <section class="playground-output" id="pg-output" hidden>
+    <h3 class="home-section__title">Result</h3>
+    <div id="pg-out-image-wrap" hidden>
+      <img id="pg-out-img" alt="Generated image" class="playground-output__img" />
+    </div>
+    <pre id="pg-out-json" class="log log--compact" hidden></pre>
+  </section>
+</section>
+
+<section class="playground-section home-section" aria-labelledby="pg-chute-title">
+  <h2 class="home-section__title" id="pg-chute-title">Deployed chute (LLM, TTS, …)</h2>
+  <p class="muted small">
+    <strong>Dynamic form:</strong> enter the chute base URL, <strong>Fetch OpenAPI</strong>, pick an operation — fields match that endpoint’s JSON schema.
+    <strong>Manual:</strong> use “Manual JSON” to type the body yourself. Your API key is added on the server; only <code>https://*.chutes.ai</code> is allowed.
+  </p>
+
+  <form id="cc-form" class="form playground-form" {% if not api_key_configured %}inert{% endif %}>
+    <label>Base URL
+      <input type="url" id="cc-base" class="pf-control" required placeholder="https://username-my-chute.chutes.ai" autocomplete="off" />
+    </label>
+    <div class="row" style="flex-wrap: wrap; gap: 8px; align-items: center;">
+      <button type="button" class="btn secondary sm" id="cc-fetch-openapi">Fetch OpenAPI</button>
+      <button type="button" class="btn secondary sm" id="cc-use-manual">Manual JSON</button>
+      <span id="cc-openapi-status" class="muted small" aria-live="polite"></span>
+    </div>
+    <label id="cc-op-label" hidden>Operation
+      <select id="cc-op" class="pf-control" hidden aria-label="OpenAPI operation"></select>
+    </label>
+    <label>Path
+      <input type="text" id="cc-path" class="pf-control" value="/v1/chat/completions" autocomplete="off" />
+    </label>
+    <label>Method
+      <select id="cc-method" class="pf-control">
+        <option value="POST" selected>POST</option>
+        <option value="GET">GET</option>
+        <option value="PUT">PUT</option>
+        <option value="DELETE">DELETE</option>
+      </select>
+    </label>
+    <div id="cc-dyn-wrap" class="playground-fields" hidden>
+      <p class="muted small">Request fields from OpenAPI</p>
+      <div id="cc-dyn-fields"></div>
+    </div>
+    <label id="cc-json-wrap">JSON body (manual)
+      <textarea id="cc-json" class="pf-control mono" rows="10" spellcheck="false">{
+  "model": "default",
+  "messages": [
+    { "role": "user", "content": "Hello!" }
+  ]
+}</textarea>
+    </label>
+    <div class="row">
+      <button type="submit" class="btn" id="cc-submit">Send</button>
+      <span id="cc-status" class="muted small" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <section class="playground-output" id="cc-output" hidden>
+    <h3 class="home-section__title">Response</h3>
+    <div id="cc-out-media-wrap" hidden>
+      <img id="cc-out-img" alt="Response image" class="playground-output__img" />
+    </div>
+    <div id="cc-out-audio-wrap" hidden>
+      <audio id="cc-out-audio" controls class="playground-output__audio"></audio>
+    </div>
+    <pre id="cc-out-pre" class="log log--compact"></pre>
+  </section>
+</section>
+
+<script src="/static/js/playground_fields.js"></script>
+<script src="/static/js/public_image_playground.js"></script>
+{% endblock %}

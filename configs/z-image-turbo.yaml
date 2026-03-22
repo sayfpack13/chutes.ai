@@ -1,38 +1,29 @@
-name: whisper-template
-chute_type: speech
+name: z-image-turbo
+chute_type: video
 username: your_username
-tagline: Speech Recognition with Whisper
-description: '# Whisper - Speech Recognition
+tagline: Video generation
+description: '# Video generation
 
 
-  Transcribe audio to text using OpenAI''s Whisper model.
+  Scaffold for hosted video models (text-to-video, image-to-video). Wire your inference
+  stack and dependencies in the generated module.
 
 
-  ## Features
-
-  - Multi-language support
-
-  - Timestamp-level transcription
-
-  - Various model sizes
-
-  - Word-level timestamps
+  See the Chutes example: https://chutes.ai/docs/examples/video-generation
 
   '
 model:
   source: huggingface
-  name: openai/whisper-large-v3
+  name: Wan-AI/Wan2.1-T2V-14B
   revision: main
   trust_remote_code: false
   custom_download_url: null
 hardware:
   gpu_count: 1
-  min_vram_gb_per_gpu: 16
+  min_vram_gb_per_gpu: 24
   include:
   - rtx4090
-  - rtx3090
   - a100
-  - a10g
   exclude: []
 docker:
   base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
@@ -45,8 +36,6 @@ docker:
   - torch
   - transformers
   - accelerate
-  - librosa
-  - soundfile
   extra_pip_index: https://download.pytorch.org/whl/cu121
   env_vars:
     HF_HOME: /app/models
@@ -54,18 +43,24 @@ docker:
   image_tag: 1.0.0
   image_readme: ''
 api:
-- path: /transcribe
+- path: /generate
   method: POST
-  input_schema: TranscriptionRequest
-  output_content_type: application/json
+  input_schema: VideoGenerationRequest
+  output_content_type: video/mp4
   stream: false
-  description: Transcribe audio to text
+  description: Generate video from prompt or conditioning input
 - path: /health
   method: GET
   input_schema: None
   output_content_type: application/json
   stream: false
-  description: Health check endpoint
-concurrency: 4
+  description: Health check
+concurrency: 1
 allow_external_egress: true
 shutdown_after_seconds: 300
+engine_args: {}
+template_max_instances: 1
+template_scaling_threshold: 0.75
+embedding_pooling_type: auto
+embedding_max_embed_len: 3072000
+embedding_enable_chunked_processing: true

@@ -35,7 +35,13 @@
 </div>
 {% endif %}
 
-<p class="muted small">Do these steps in order. Build and publish can take several minutes.</p>
+<p class="muted small">
+  {% if skip_build %}
+  For this template: <strong>Prepare</strong>, then <strong>Publish</strong> — Chutes already provides the container image (no <code>chutes build</code>).
+  {% else %}
+  Do these steps in order. Build and publish can take several minutes.
+  {% endif %}
+</p>
 
 <ol class="deploy-steps" id="deploy-steps" data-chute-name="{{ name }}">
   <li class="deploy-step" data-step="prepare">
@@ -51,16 +57,26 @@
     <details class="deploy-step__details"><summary>Show details</summary><pre class="log log--compact" id="step-prepare-out"></pre></details>
   </li>
 
-  <li class="deploy-step" data-step="build">
+  <li class="deploy-step" data-step="build" {% if skip_build %}data-skip-build="1"{% endif %}>
     <div class="deploy-step__head">
       <span class="deploy-step__num">2</span>
       <div>
-        <h2 class="deploy-step__title">Build</h2>
-        <p class="deploy-step__desc">Builds your image. Stay on this page until it finishes.</p>
+        <h2 class="deploy-step__title">{% if skip_build %}Build (skipped){% else %}Build{% endif %}</h2>
+        <p class="deploy-step__desc">
+          {% if skip_build %}
+          Not used for vLLM / SGLang / diffusion / embedding templates — the platform image is fixed. If you click the button below, the manager records a successful skip instead of calling <code>chutes build</code>.
+          {% else %}
+          Builds your image. Stay on this page until it finishes.
+          {% endif %}
+        </p>
       </div>
     </div>
-    <div class="deploy-step__status" id="step-build-status" aria-live="polite"></div>
+    <div class="deploy-step__status {% if skip_build %}deploy-step__status--ok{% endif %}" id="step-build-status" aria-live="polite">{% if skip_build %}No image build required — go to step 3.{% endif %}</div>
+    {% if not skip_build %}
     <button type="button" class="btn js-step-run" data-step="build">Run build</button>
+    {% else %}
+    <button type="button" class="btn secondary js-step-run" data-step="build">Record skip (optional)</button>
+    {% endif %}
     <details class="deploy-step__details"><summary>Show details</summary><pre class="log log--compact" id="step-build-out"></pre></details>
   </li>
 
@@ -93,6 +109,18 @@
 </ol>
 
 <p class="muted small"><a href="/config/{{ name }}/edit">Advanced: edit YAML</a> · <a href="/platform/advanced">Advanced platform tools</a></p>
+
+{% if public_image_curl_example %}
+<section class="home-section public-api-hint">
+  <h2 class="home-section__title">Use Chutes’ hosted image API (no deploy)</h2>
+  <p class="muted small">
+    Public models like <strong class="mono">{{ model_name }}</strong> are callable on <code>image.chutes.ai</code> with your API token — billed per step like on the website.
+    Call this from <strong>your backend</strong> (never put the token in browser JavaScript).
+    Browse more models on <a href="https://chutes.ai" target="_blank" rel="noopener">Chutes Discover / API</a>.
+  </p>
+  <pre class="log log--compact public-api-hint__curl">{{ public_image_curl_example | e }}</pre>
+</section>
+{% endif %}
 
 <script src="/static/js/chutes_stream.js"></script>
 <script src="/static/js/chute_flow.js"></script>

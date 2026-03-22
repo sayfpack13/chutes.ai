@@ -1,6 +1,6 @@
 /* global window */
 /**
- * Read a POST response as newline-delimited JSON from /api/build/*/stream or /api/deploy/*/stream.
+ * Read a POST response as newline-delimited JSON from the build/deploy NDJSON stream endpoints.
  */
 async function consumeChutesNdjsonStream(url, handlers) {
   const onLog = handlers && handlers.onLog;

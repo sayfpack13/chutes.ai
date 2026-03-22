@@ -21,6 +21,7 @@ from core import (  # noqa: E402
     ConfigManager,
     ChuteConfig,
     build_chute,
+    uses_chutes_platform_image,
     chutes_get,
     chutes_list,
     chutes_logs,
@@ -90,6 +91,13 @@ def cmd_build(args: argparse.Namespace) -> int:
     m = _manager()
     cfg = m.load_config(args.name)
     ref = module_ref(cfg)
+    if uses_chutes_platform_image(cfg.chute_type):
+        print(
+            "Skipping chutes build: this chute_type uses a Chutes pre-built image "
+            f"({cfg.chute_type}). Run deploy instead:\n"
+            f"  cd chute_packages && chutes deploy {ref} --accept-fee"
+        )
+        return 0
     cwd = ROOT / "chute_packages"
     if not cwd.is_dir():
         print("chute_packages/ missing. Run: python cli.py generate", args.name, file=sys.stderr)
@@ -152,7 +160,12 @@ def main() -> int:
     sp.set_defaults(func=cmd_seed)
 
     sp = sub.add_parser("new", help="Create configs/<name>.yaml from a built-in template key")
-    sp.add_argument("template", help="Template key: " + ", ".join(get_template_names()))
+    sp.add_argument(
+        "template",
+        help="Template key: "
+        + ", ".join(get_template_names())
+        + " (vllm/sglang/diffusion/embedding = Chutes pre-built images)",
+    )
     sp.add_argument("name", help="New chute config name (slug)")
     sp.add_argument("--username", help="Chutes.ai username", default="")
     sp.set_defaults(func=cmd_new)

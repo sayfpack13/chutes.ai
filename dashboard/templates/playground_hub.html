@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Playground hub{% endblock %}
+{% block content %}
+<p class="page-kicker"><a href="/">← Home</a></p>
+<h1>Playground</h1>
+
+<section class="playground-section playground-catalog" aria-labelledby="pg-hub-lead">
+  <p class="muted page-lead" id="pg-hub-lead">
+    Browse ready-to-use chutes from the Chutes API. Select a chute to open its dynamic generation page (OpenAPI-derived form when available).
+    The <strong>hosted image API</strong> is also available separately below.
+  </p>
+  <div class="row" style="flex-wrap: wrap; gap: 12px; margin-bottom: 16px; align-items: center;">
+    <label class="pf-label" style="margin: 0;">Filter by type:
+      <select id="pg-type-filter" class="pf-control">
+        <option value="">All</option>
+        <option value="llm">LLM</option>
+        <option value="image_generation">Image Generation</option>
+        <option value="video">Video</option>
+        <option value="tts">Text to Speech</option>
+        <option value="speech_to_text">Speech to Text</option>
+        <option value="music_generation">Music Generation</option>
+        <option value="embeddings">Embeddings</option>
+      </select>
+    </label>
+    <button type="button" class="btn secondary sm" id="pg-refresh-btn">Refresh</button>
+  </div>
+  <div id="pg-hub-status" class="muted small playground-meta" aria-live="polite"></div>
+  <div id="pg-hub-root" class="playground-catalog__groups"></div>
+</section>
+
+<section class="playground-section" aria-labelledby="pg-hub-image-title">
+  <h2 class="home-section__title" id="pg-hub-image-title">Hosted image API</h2>
+  <p class="muted small">
+    Shared <code>image.chutes.ai</code> pool (not per-chute diffusion). Open the dedicated page:
+  </p>
+  <a href="/playground/image" class="btn">Open image playground</a>
+</section>
+
+<script src="/static/js/playground_hub.js"></script>
+{% endblock %}

@@ -1,0 +1,36 @@
+name: prebuilt-vllm-llama
+chute_type: vllm
+username: your_username
+tagline: vLLM — Llama 3.2 3B
+description: |-
+  # vLLM · Meta Llama 3.2 3B
+
+  Compact instruct model on Chutes pre-built vLLM image. Ensure HF access if the repo is gated.
+model:
+  source: huggingface
+  name: meta-llama/Llama-3.2-3B-Instruct
+  revision: main
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 16
+  include: []
+  exclude: []
+docker:
+  base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
+  python_version: "3.11"
+  system_packages: [git, curl]
+  python_packages: []
+api:
+  - path: /v1/chat/completions
+    method: POST
+    input_schema: ChatCompletion
+    output_content_type: application/json
+    description: OpenAI-compatible chat
+concurrency: 48
+allow_external_egress: false
+shutdown_after_seconds: 300
+engine_args:
+  max_model_len: 8192
+  trust_remote_code: true
+template_max_instances: 1
+template_scaling_threshold: 0.75

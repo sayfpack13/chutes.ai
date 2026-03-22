@@ -52,7 +52,7 @@ function wireButtons() {
         `/api/build/${encodeURIComponent(name)}/stream`,
         {
           onLog(msg) {
-            buf += (buf ? "\n" : "") + msg;
+            buf += msg;
             if (el) {
               el.textContent = buf;
               el.scrollTop = el.scrollHeight;
@@ -83,7 +83,7 @@ function wireButtons() {
         `/api/deploy/${encodeURIComponent(name)}/stream`,
         {
           onLog(msg) {
-            buf += (buf ? "\n" : "") + msg;
+            buf += msg;
             if (el) {
               el.textContent = buf;
               el.scrollTop = el.scrollHeight;

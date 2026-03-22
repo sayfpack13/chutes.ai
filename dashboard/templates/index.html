@@ -3,7 +3,7 @@
 {% block content %}
 <span id="home-app" data-has-api-key="{{ 'true' if api_key_configured else 'false' }}" hidden aria-hidden="true"></span>
 <h1>My chutes</h1>
-<p class="muted page-lead">Connect your account, then use <strong>Deploy this chute</strong> to prepare, build, and publish step by step.</p>
+<p class="muted page-lead">Connect your account. <strong>Deploy this chute</strong> runs the full flow for custom builds; managed platform templates (vLLM, SGLang, diffusion, embedding) can use the <strong>Playground</strong> for hosted image generation parameters without deploying your own image chute.</p>
 
 <div class="connection-strip" id="connection-strip">
   <div class="connection-item {% if api_key_configured %}ok{% else %}warn{% endif %}" title="Save your API key under Account">
@@ -19,38 +19,58 @@
     <span class="connection-item__value" id="health-ping">Checking…</span>
   </div>
   <div class="connection-strip__links">
+    <a href="/playground">Playground</a>
     <a href="/settings/account">Account</a>
   </div>
 </div>
 
+<nav class="home-new-chute-nav" aria-label="Create chute shortcuts">
+  <span class="home-new-chute-nav__label muted small">New chute (same types as chutes.ai)</span>
+  <div class="home-new-chute-nav__links">
+    {% for link in new_chute_links %}
+    <a href="{{ link.href }}" class="home-new-chute-nav__a">{{ link.label }}</a>
+    {% endfor %}
+  </div>
+</nav>
+
 <section class="home-section">
   <h2 class="home-section__title">Your chutes</h2>
-  {% if rows %}
-  <ul class="chute-card-list">
-    {% for row in rows %}
-    <li class="chute-card {% if row.error %}chute-card--err{% endif %}">
-      {% if row.error %}
-      <div class="chute-card__main">
-        <span class="chute-card__name">{{ row.name }}</span>
-        <p class="err small">{{ row.error }}</p>
-        <a href="/config/{{ row.name }}/edit" class="btn secondary sm">Edit settings (advanced)</a>
-      </div>
-      {% else %}
-      <div class="chute-card__main">
-        <span class="chute-card__name">{{ row.name }}</span>
-        <span class="chute-card__meta">{{ row.type }} · {{ row.username }} · {{ row.model }}</span>
-      </div>
-      <div class="chute-card__actions">
-        <a href="/chute/{{ row.name }}" class="btn">Deploy this chute</a>
-        <a href="/config/{{ row.name }}/edit" class="btn secondary sm">Advanced (YAML)</a>
-        <form method="post" action="/config/{{ row.name }}/delete" class="chute-card__delete" onsubmit="return confirm('Remove {{ row.name }} from this computer?');">
-          <button type="submit" class="btn danger sm">Remove</button>
-        </form>
-      </div>
-      {% endif %}
-    </li>
-    {% endfor %}
-  </ul>
+  {% if home_sections %}
+  {% for section in home_sections %}
+  <div class="home-config-section" id="home-sec-{{ section.id }}">
+    <h3 class="home-config-section__title">{{ section.title }}</h3>
+    <p class="home-config-section__blurb muted small">{{ section.blurb }}</p>
+    <ul class="chute-card-list">
+      {% for row in section.rows %}
+      <li class="chute-card {% if row.error %}chute-card--err{% endif %}">
+        {% if row.error %}
+        <div class="chute-card__main">
+          <span class="chute-card__name">{{ row.name }}</span>
+          <p class="err small">{{ row.error }}</p>
+          <a href="/config/{{ row.name }}/edit" class="btn secondary sm">Edit settings (advanced)</a>
+        </div>
+        {% else %}
+        <div class="chute-card__main">
+          <span class="chute-card__name">{{ row.name }}</span>
+          <span class="chute-card__meta">{{ row.type }} · {{ row.username }} · {{ row.model }}</span>
+        </div>
+        <div class="chute-card__actions">
+          {% if row.uses_platform_image %}
+          <a href="{{ row.playground_url }}" class="btn">Playground</a>
+          {% else %}
+          <a href="/chute/{{ row.name }}" class="btn">Deploy this chute</a>
+          {% endif %}
+          <a href="/config/{{ row.name }}/edit" class="btn secondary sm">Advanced (YAML)</a>
+          <form method="post" action="/config/{{ row.name }}/delete" class="chute-card__delete" onsubmit="return confirm('Remove {{ row.name }} from this computer?');">
+            <button type="submit" class="btn danger sm">Remove</button>
+          </form>
+        </div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
   {% else %}
   <p class="muted">You don’t have any chutes yet. <a href="/config/new">Create one</a> to get started.</p>
   {% endif %}

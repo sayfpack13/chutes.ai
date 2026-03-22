@@ -1,0 +1,38 @@
+name: prebuilt-embedding
+chute_type: embedding
+username: your_username
+tagline: Embeddings — text vectors
+description: |-
+  # Embeddings on Chutes (pre-built image)
+
+  Uses `build_embedding_chute`. Endpoint: `POST /v1/embeddings`.
+  See https://chutes.ai/docs/sdk-reference/templates
+model:
+  source: huggingface
+  name: BAAI/bge-small-en-v1.5
+  revision: main
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 16
+  include: []
+  exclude: []
+docker:
+  base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
+  python_version: "3.11"
+  system_packages: [git, curl]
+  python_packages: []
+api:
+  - path: /v1/embeddings
+    method: POST
+    input_schema: Embeddings
+    output_content_type: application/json
+    description: OpenAI-compatible embeddings
+concurrency: 32
+allow_external_egress: false
+shutdown_after_seconds: 300
+engine_args: {}
+template_max_instances: 1
+template_scaling_threshold: 0.75
+embedding_pooling_type: auto
+embedding_max_embed_len: 3072000
+embedding_enable_chunked_processing: true

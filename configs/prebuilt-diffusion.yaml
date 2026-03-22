@@ -1,0 +1,36 @@
+name: prebuilt-diffusion
+chute_type: diffusion
+username: your_username
+tagline: Diffusion — image generation
+description: |-
+  # Diffusion on Chutes (pre-built image)
+
+  Uses `build_diffusion_chute`. Typical endpoint: `POST /generate`.
+  See https://chutes.ai/docs/guides/templates
+model:
+  source: huggingface
+  name: stabilityai/stable-diffusion-xl-base-1.0
+  revision: main
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 24
+  include: []
+  exclude: []
+docker:
+  base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
+  python_version: "3.11"
+  system_packages: [git, curl]
+  python_packages: []
+api:
+  - path: /generate
+    method: POST
+    input_schema: GenerationInput
+    output_content_type: image/png
+    description: Text-to-image
+concurrency: 1
+allow_external_egress: false
+shutdown_after_seconds: 300
+# Optional: keys passed as ``pipeline_args`` to diffusers (e.g. torch_dtype). Regenerate after edits.
+engine_args: {}
+template_max_instances: 1
+template_scaling_threshold: 0.75

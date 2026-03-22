@@ -82,7 +82,15 @@ document.querySelectorAll(".js-step-run").forEach((btn) => {
       if (!window.confirm("Publish to Chutes? This may charge your account.")) return;
     }
 
-    setStepState(step, "running", step === "build" ? "Running… (this can take a long time)" : "Working…");
+    setStepState(
+      step,
+      "running",
+      step === "build"
+        ? "Starting build — streaming output (first lines can take a while)…"
+        : step === "publish"
+          ? "Starting publish…"
+          : "Working…"
+    );
     setStepOut(step, "");
     btn.disabled = true;
 
@@ -100,14 +108,19 @@ document.querySelectorAll(".js-step-run").forEach((btn) => {
         outEl?.closest("details")?.setAttribute("open", "");
         let logBuf = "";
         const url = `/api/build/${encodeURIComponent(name)}/stream`;
+        if (typeof window.consumeChutesNdjsonStream !== "function") {
+          setStepState(step, "err", "Reload the page — chutes_stream.js failed to load.");
+          return;
+        }
         const { ok, data } = await window.consumeChutesNdjsonStream(url, {
           onLog(msg) {
-            logBuf += (logBuf ? "\n" : "") + msg;
+            logBuf += msg;
             if (outEl) {
               outEl.textContent = logBuf;
               outEl.scrollTop = outEl.scrollHeight;
             }
-            const tail = msg.length > 100 ? "…" + msg.slice(-100) : msg;
+            const oneLine = String(msg).replace(/\s+/g, " ").trim();
+            const tail = oneLine.length > 90 ? "…" + oneLine.slice(-90) : oneLine;
             setStepState(step, "running", tail || "Running…");
           },
           onResult(ev) {
@@ -120,7 +133,11 @@ document.querySelectorAll(".js-step-run").forEach((btn) => {
         });
         const hint = friendlyCliError((data && data.stderr) || (data && data.stdout));
         if (ok && data && data.ok) {
-          setStepState(step, "ok", "Build finished.");
+          setStepState(
+            step,
+            "ok",
+            data.skipped ? "Skipped — Chutes standard image (no build needed)." : "Build finished."
+          );
         } else {
           setStepState(
             step,
@@ -133,14 +150,19 @@ document.querySelectorAll(".js-step-run").forEach((btn) => {
         outEl?.closest("details")?.setAttribute("open", "");
         let logBuf = "";
         const url = `/api/deploy/${encodeURIComponent(name)}/stream`;
+        if (typeof window.consumeChutesNdjsonStream !== "function") {
+          setStepState(step, "err", "Reload the page — chutes_stream.js failed to load.");
+          return;
+        }
         const { ok, data } = await window.consumeChutesNdjsonStream(url, {
           onLog(msg) {
-            logBuf += (logBuf ? "\n" : "") + msg;
+            logBuf += msg;
             if (outEl) {
               outEl.textContent = logBuf;
               outEl.scrollTop = outEl.scrollHeight;
             }
-            const tail = msg.length > 100 ? "…" + msg.slice(-100) : msg;
+            const oneLine = String(msg).replace(/\s+/g, " ").trim();
+            const tail = oneLine.length > 90 ? "…" + oneLine.slice(-90) : oneLine;
             setStepState(step, "running", tail || "Publishing…");
           },
           onResult(ev) {

@@ -34,7 +34,12 @@ class ModelConfig(BaseModel):
 
 class HardwareConfig(BaseModel):
     gpu_count: int = Field(default=1, ge=1, le=8)
-    min_vram_gb_per_gpu: int = Field(default=16, ge=8, le=80)
+    min_vram_gb_per_gpu: int = Field(
+        default=16,
+        ge=16,
+        le=80,
+        description="Chutes NodeSelector requires at least 16 GB per GPU",
+    )
     include: List[str] = Field(default_factory=lambda: [])
     exclude: List[str] = Field(default_factory=lambda: [])
     
@@ -77,7 +82,19 @@ class ChuteConfig(BaseModel):
     """Complete configuration for a chute."""
     name: str = Field(..., description="Chute name (unique identifier)")
     chute_type: Literal[
-        "music", "image", "llm", "speech", "vision", "tts", "custom"
+        "music",
+        "image",
+        "llm",
+        "speech",
+        "vision",
+        "tts",
+        "custom",
+        "vllm",
+        "sglang",
+        "diffusion",
+        "embedding",
+        "video",
+        "moderation",
     ] = Field(default="custom", description="Scaffold used by the code generator")
     username: str = Field(default="your_username", description="Chutes.ai username")
     tagline: str = Field(default="AI Service", description="Short description")
@@ -89,6 +106,16 @@ class ChuteConfig(BaseModel):
     concurrency: int = Field(default=4, ge=1, le=64)
     allow_external_egress: bool = Field(default=True)
     shutdown_after_seconds: int = Field(default=300, ge=60, le=3600)
+    # Chutes SDK template builders (vllm / sglang / diffusion / embedding)
+    engine_args: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Passed to build_*_chute engine_args (vLLM/SGLang/diffusion/embedding)",
+    )
+    template_max_instances: int = Field(default=1, ge=1, le=64)
+    template_scaling_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
+    embedding_pooling_type: str = Field(default="auto")
+    embedding_max_embed_len: int = Field(default=3072000, ge=256, le=10_000_000)
+    embedding_enable_chunked_processing: bool = Field(default=True)
     
     @field_validator('name')
     @classmethod

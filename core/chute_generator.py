@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List
 
 from .config_manager import ChuteConfig, DockerImageConfig, HardwareConfig
 
@@ -527,12 +527,146 @@ async def health(self) -> dict:
 '''
 
 
+def _template_revision_kw(cfg: ChuteConfig) -> Dict[str, Any]:
+    r = (cfg.model.revision or "").strip()
+    if not r or r == "main":
+        return {}
+    return {"revision": r}
+
+
+def _template_engine_args_kw(cfg: ChuteConfig) -> Dict[str, Any]:
+    if not cfg.engine_args:
+        return {}
+    return {"engine_args": dict(cfg.engine_args)}
+
+
+def generate_vllm_platform_chute(cfg: ChuteConfig) -> str:
+    """Chutes pre-built vLLM image — see https://chutes.ai/docs/guides/templates"""
+    ns = build_node_selector_python(cfg.hardware)
+    extra = {**_template_engine_args_kw(cfg), **_template_revision_kw(cfg)}
+    extra_lines = "".join(f"    {k}={repr(v)},\n" for k, v in extra.items())
+    return f'''"""
+Auto-generated vLLM chute ({cfg.name}) — Chutes pre-built image.
+HF model: {cfg.model.name}
+Edit configs/{cfg.name}.yaml and re-run generate.
+Docs: https://chutes.ai/docs/sdk-reference/templates
+"""
+from chutes.chute import NodeSelector
+from chutes.chute.template import build_vllm_chute
+
+chute = build_vllm_chute(
+    username={repr(cfg.username)},
+    model_name={repr(cfg.model.name)},
+    node_selector={ns},
+    tagline={repr(cfg.tagline)},
+    readme={repr(cfg.description)},
+    concurrency={cfg.concurrency},
+    allow_external_egress={repr(cfg.allow_external_egress)},
+    shutdown_after_seconds={cfg.shutdown_after_seconds},
+    max_instances={cfg.template_max_instances},
+    scaling_threshold={cfg.template_scaling_threshold},
+{extra_lines})
+'''
+
+
+def generate_sglang_platform_chute(cfg: ChuteConfig) -> str:
+    """Chutes pre-built SGLang image."""
+    ns = build_node_selector_python(cfg.hardware)
+    extra = {**_template_engine_args_kw(cfg), **_template_revision_kw(cfg)}
+    extra_lines = "".join(f"    {k}={repr(v)},\n" for k, v in extra.items())
+    return f'''"""
+Auto-generated SGLang chute ({cfg.name}) — Chutes pre-built image.
+HF model: {cfg.model.name}
+Edit configs/{cfg.name}.yaml and re-run generate.
+Docs: https://chutes.ai/docs/sdk-reference/templates
+"""
+from chutes.chute import NodeSelector
+from chutes.chute.template.sglang import build_sglang_chute
+
+chute = build_sglang_chute(
+    username={repr(cfg.username)},
+    model_name={repr(cfg.model.name)},
+    node_selector={ns},
+    tagline={repr(cfg.tagline)},
+    readme={repr(cfg.description)},
+    concurrency={cfg.concurrency},
+    allow_external_egress={repr(cfg.allow_external_egress)},
+    shutdown_after_seconds={cfg.shutdown_after_seconds},
+    max_instances={cfg.template_max_instances},
+    scaling_threshold={cfg.template_scaling_threshold},
+{extra_lines})
+'''
+
+
+def generate_diffusion_platform_chute(cfg: ChuteConfig) -> str:
+    """Chutes pre-built diffusion image (SDK: name, model_name_or_url, pipeline_args)."""
+    ns = build_node_selector_python(cfg.hardware)
+    rev = _template_revision_kw(cfg)
+    rev_line = f"    revision={repr(rev['revision'])},\n" if rev else ""
+    pa = dict(cfg.engine_args) if cfg.engine_args else {}
+    pa_line = f"    pipeline_args={repr(pa)},\n" if pa else ""
+    return f'''"""
+Auto-generated diffusion chute ({cfg.name}) — Chutes pre-built image.
+HF model: {cfg.model.name}
+Edit configs/{cfg.name}.yaml and re-run generate.
+YAML ``engine_args`` maps to ``pipeline_args`` (passed to diffusers ``from_pretrained``).
+"""
+from chutes.chute import NodeSelector
+from chutes.chute.template.diffusion import build_diffusion_chute
+
+chute = build_diffusion_chute(
+    username={repr(cfg.username)},
+    name={repr(cfg.name)},
+    model_name_or_url={repr(cfg.model.name)},
+    node_selector={ns},
+    tagline={repr(cfg.tagline)},
+    readme={repr(cfg.description)},
+    concurrency={cfg.concurrency},
+    shutdown_after_seconds={cfg.shutdown_after_seconds},
+    max_instances={cfg.template_max_instances},
+    scaling_threshold={cfg.template_scaling_threshold},
+{rev_line}{pa_line})
+'''
+
+
+def generate_embedding_platform_chute(cfg: ChuteConfig) -> str:
+    """Chutes pre-built embedding (vLLM-based) image."""
+    ns = build_node_selector_python(cfg.hardware)
+    extra = {**_template_engine_args_kw(cfg), **_template_revision_kw(cfg)}
+    extra_lines = "".join(f"    {k}={repr(v)},\n" for k, v in extra.items())
+    return f'''"""
+Auto-generated embedding chute ({cfg.name}) — Chutes pre-built image.
+HF model: {cfg.model.name}
+Edit configs/{cfg.name}.yaml and re-run generate.
+Docs: https://chutes.ai/docs/sdk-reference/templates
+"""
+from chutes.chute import NodeSelector
+from chutes.chute.template.embedding import build_embedding_chute
+
+chute = build_embedding_chute(
+    username={repr(cfg.username)},
+    model_name={repr(cfg.model.name)},
+    node_selector={ns},
+    tagline={repr(cfg.tagline)},
+    readme={repr(cfg.description)},
+    concurrency={cfg.concurrency},
+    allow_external_egress={repr(cfg.allow_external_egress)},
+    shutdown_after_seconds={cfg.shutdown_after_seconds},
+    max_instances={cfg.template_max_instances},
+    scaling_threshold={cfg.template_scaling_threshold},
+    pooling_type={repr(cfg.embedding_pooling_type)},
+    max_embed_len={cfg.embedding_max_embed_len},
+    enable_chunked_processing={repr(cfg.embedding_enable_chunked_processing)},
+{extra_lines})
+'''
+
+
 def generate_custom_stub(cfg: ChuteConfig) -> str:
     image_py = build_image_python(cfg)
     chute_py = _chute_block(cfg)
     return f'''"""
-Auto-generated custom stub ({cfg.name}).
-HF model config present but chute_type is custom — implement your cords.
+Auto-generated {cfg.chute_type} scaffold ({cfg.name}).
+Implement cords for the API paths in your YAML (see Chutes custom templates).
 """
 from pydantic import BaseModel, Field
 
@@ -560,7 +694,7 @@ async def echo(self, data: EchoBody) -> dict:
     output_content_type="application/json",
 )
 async def health(self) -> dict:
-    return {{"status": "ok", "custom": True}}
+    return {{"status": "ok", "chute_type": "{cfg.chute_type}"}}
 '''
 
 
@@ -578,6 +712,14 @@ def generate_python_source(cfg: ChuteConfig) -> str:
         return generate_vision_stub(cfg)
     if t == "tts":
         return generate_tts_stub(cfg)
+    if t == "vllm":
+        return generate_vllm_platform_chute(cfg)
+    if t == "sglang":
+        return generate_sglang_platform_chute(cfg)
+    if t == "diffusion":
+        return generate_diffusion_platform_chute(cfg)
+    if t == "embedding":
+        return generate_embedding_platform_chute(cfg)
     return generate_custom_stub(cfg)
 
 

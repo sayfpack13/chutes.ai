@@ -227,7 +227,7 @@ Transcribe audio to text using OpenAI's Whisper model.
         },
         "hardware": {
             "gpu_count": 1,
-            "min_vram_gb_per_gpu": 10,
+            "min_vram_gb_per_gpu": 16,
             "include": ["rtx4090", "rtx3090", "a100", "a10g"]
         },
         "docker": {
@@ -352,7 +352,7 @@ Convert text to natural-sounding speech.
         },
         "hardware": {
             "gpu_count": 1,
-            "min_vram_gb_per_gpu": 12,
+            "min_vram_gb_per_gpu": 16,
             "include": ["rtx4090", "rtx3090", "a100"]
         },
         "docker": {
@@ -392,6 +392,304 @@ Convert text to natural-sounding speech.
     }
 
 
+def get_vllm_platform_template() -> Dict[str, Any]:
+    """Chutes pre-built vLLM image (no custom Docker Image() in generated code)."""
+    return {
+        "name": "vllm-platform-template",
+        "chute_type": "vllm",
+        "tagline": "vLLM — OpenAI-compatible LLM serving",
+        "description": """# vLLM on Chutes (pre-built image)
+
+Uses `build_vllm_chute` and Chutes-managed images. Endpoints include `/v1/chat/completions`.
+See https://chutes.ai/docs/guides/templates
+""",
+        "username": "your_username",
+        "model": {
+            "source": "huggingface",
+            "name": "mistralai/Mistral-7B-Instruct-v0.3",
+            "revision": "main",
+        },
+        "hardware": {
+            "gpu_count": 1,
+            "min_vram_gb_per_gpu": 24,
+            "include": [],
+            "exclude": [],
+        },
+        "docker": {
+            "base_image": "nvidia/cuda:12.1-runtime-ubuntu22.04",
+            "python_version": "3.11",
+            "system_packages": ["git", "curl"],
+            "python_packages": [],
+        },
+        "api": [
+            {
+                "path": "/v1/chat/completions",
+                "method": "POST",
+                "input_schema": "ChatCompletion",
+                "output_content_type": "application/json",
+                "description": "OpenAI-compatible chat (provided by vLLM template)",
+            }
+        ],
+        "concurrency": 64,
+        "allow_external_egress": False,
+        "shutdown_after_seconds": 300,
+        "engine_args": {},
+        "template_max_instances": 1,
+        "template_scaling_threshold": 0.75,
+    }
+
+
+def get_sglang_platform_template() -> Dict[str, Any]:
+    """Chutes pre-built SGLang image."""
+    return {
+        "name": "sglang-platform-template",
+        "chute_type": "sglang",
+        "tagline": "SGLang — structured LLM serving",
+        "description": """# SGLang on Chutes (pre-built image)
+
+Uses `build_sglang_chute`. See https://chutes.ai/docs/guides/templates
+""",
+        "username": "your_username",
+        "model": {
+            "source": "huggingface",
+            "name": "Qwen/Qwen2.5-7B-Instruct",
+            "revision": "main",
+        },
+        "hardware": {
+            "gpu_count": 1,
+            "min_vram_gb_per_gpu": 16,
+            "include": [],
+            "exclude": [],
+        },
+        "docker": {
+            "base_image": "nvidia/cuda:12.1-runtime-ubuntu22.04",
+            "python_version": "3.11",
+            "system_packages": ["git", "curl"],
+            "python_packages": [],
+        },
+        "api": [
+            {
+                "path": "/v1/chat/completions",
+                "method": "POST",
+                "input_schema": "ChatCompletion",
+                "output_content_type": "application/json",
+                "description": "Chat (SGLang template)",
+            }
+        ],
+        "concurrency": 32,
+        "allow_external_egress": False,
+        "shutdown_after_seconds": 300,
+        "engine_args": {},
+        "template_max_instances": 1,
+        "template_scaling_threshold": 0.75,
+    }
+
+
+def get_diffusion_platform_template() -> Dict[str, Any]:
+    """Chutes pre-built diffusion image."""
+    return {
+        "name": "diffusion-platform-template",
+        "chute_type": "diffusion",
+        "tagline": "Diffusion — image generation",
+        "description": """# Diffusion on Chutes (pre-built image)
+
+Uses `build_diffusion_chute`. Typical endpoint: `POST /generate`.
+See https://chutes.ai/docs/guides/templates
+""",
+        "username": "your_username",
+        "model": {
+            "source": "huggingface",
+            "name": "stabilityai/stable-diffusion-xl-base-1.0",
+            "revision": "main",
+        },
+        "hardware": {
+            "gpu_count": 1,
+            "min_vram_gb_per_gpu": 24,
+            "include": [],
+            "exclude": [],
+        },
+        "docker": {
+            "base_image": "nvidia/cuda:12.1-runtime-ubuntu22.04",
+            "python_version": "3.11",
+            "system_packages": ["git", "curl"],
+            "python_packages": [],
+        },
+        "api": [
+            {
+                "path": "/generate",
+                "method": "POST",
+                "input_schema": "GenerationInput",
+                "output_content_type": "image/png",
+                "description": "Text-to-image",
+            }
+        ],
+        "concurrency": 1,
+        "allow_external_egress": False,
+        "shutdown_after_seconds": 300,
+        "engine_args": {},
+        "template_max_instances": 1,
+        "template_scaling_threshold": 0.75,
+    }
+
+
+def get_embedding_platform_template() -> Dict[str, Any]:
+    """Chutes pre-built embedding image (OpenAI-style /v1/embeddings)."""
+    return {
+        "name": "embedding-platform-template",
+        "chute_type": "embedding",
+        "tagline": "Embeddings — text vectors",
+        "description": """# Embeddings on Chutes (pre-built image)
+
+Uses `build_embedding_chute`. Endpoint: `POST /v1/embeddings`.
+See https://chutes.ai/docs/sdk-reference/templates
+""",
+        "username": "your_username",
+        "model": {
+            "source": "huggingface",
+            "name": "BAAI/bge-small-en-v1.5",
+            "revision": "main",
+        },
+        "hardware": {
+            "gpu_count": 1,
+            "min_vram_gb_per_gpu": 16,
+            "include": [],
+            "exclude": [],
+        },
+        "docker": {
+            "base_image": "nvidia/cuda:12.1-runtime-ubuntu22.04",
+            "python_version": "3.11",
+            "system_packages": ["git", "curl"],
+            "python_packages": [],
+        },
+        "api": [
+            {
+                "path": "/v1/embeddings",
+                "method": "POST",
+                "input_schema": "Embeddings",
+                "output_content_type": "application/json",
+                "description": "OpenAI-compatible embeddings",
+            }
+        ],
+        "concurrency": 32,
+        "allow_external_egress": False,
+        "shutdown_after_seconds": 300,
+        "engine_args": {},
+        "template_max_instances": 1,
+        "template_scaling_threshold": 0.75,
+        "embedding_pooling_type": "auto",
+        "embedding_max_embed_len": 3072000,
+        "embedding_enable_chunked_processing": True,
+    }
+
+
+def get_video_template() -> Dict[str, Any]:
+    """Scaffold for text-to-video / image-to-video (custom Image() build)."""
+    return {
+        "name": "video-template",
+        "chute_type": "video",
+        "tagline": "Video generation",
+        "description": """# Video generation
+
+Scaffold for hosted video models (text-to-video, image-to-video). Wire your inference stack and dependencies in the generated module.
+
+See the Chutes example: https://chutes.ai/docs/examples/video-generation
+""",
+        "username": "your_username",
+        "model": {
+            "source": "huggingface",
+            "name": "Wan-AI/Wan2.1-T2V-14B",
+            "revision": "main",
+        },
+        "hardware": {
+            "gpu_count": 1,
+            "min_vram_gb_per_gpu": 24,
+            "include": ["rtx4090", "a100"],
+            "exclude": [],
+        },
+        "docker": {
+            "base_image": "nvidia/cuda:12.1-runtime-ubuntu22.04",
+            "python_version": "3.11",
+            "system_packages": ["git", "curl", "ffmpeg"],
+            "python_packages": ["torch", "transformers", "accelerate"],
+            "extra_pip_index": "https://download.pytorch.org/whl/cu121",
+            "env_vars": {"HF_HOME": "/app/models"},
+        },
+        "api": [
+            {
+                "path": "/generate",
+                "method": "POST",
+                "input_schema": "VideoGenerationRequest",
+                "output_content_type": "video/mp4",
+                "description": "Generate video from prompt or conditioning input",
+            },
+            {
+                "path": "/health",
+                "method": "GET",
+                "input_schema": "None",
+                "output_content_type": "application/json",
+                "description": "Health check",
+            },
+        ],
+        "concurrency": 1,
+        "allow_external_egress": True,
+        "shutdown_after_seconds": 300,
+    }
+
+
+def get_moderation_template() -> Dict[str, Any]:
+    """Scaffold for text/image moderation or safety classifiers (custom build)."""
+    return {
+        "name": "moderation-template",
+        "chute_type": "moderation",
+        "tagline": "Content moderation",
+        "description": """# Content moderation
+
+Classifier or safety-model scaffold — implement scoring and policy in your cords.
+
+See Chutes templates overview: https://chutes.ai/docs/templates
+""",
+        "username": "your_username",
+        "model": {
+            "source": "huggingface",
+            "name": "unitary/toxic-bert",
+            "revision": "main",
+        },
+        "hardware": {
+            "gpu_count": 1,
+            "min_vram_gb_per_gpu": 16,
+            "include": ["rtx4090", "a10g", "a100"],
+            "exclude": [],
+        },
+        "docker": {
+            "base_image": "nvidia/cuda:12.1-runtime-ubuntu22.04",
+            "python_version": "3.11",
+            "system_packages": ["git", "curl"],
+            "python_packages": ["torch", "transformers", "accelerate"],
+            "extra_pip_index": "https://download.pytorch.org/whl/cu121",
+            "env_vars": {"HF_HOME": "/app/models"},
+        },
+        "api": [
+            {
+                "path": "/classify",
+                "method": "POST",
+                "input_schema": "ModerationRequest",
+                "output_content_type": "application/json",
+                "description": "Classify content for policy / safety",
+            },
+            {
+                "path": "/health",
+                "method": "GET",
+                "input_schema": "None",
+                "output_content_type": "application/json",
+                "description": "Health check",
+            },
+        ],
+        "concurrency": 8,
+        "allow_external_egress": True,
+        "shutdown_after_seconds": 300,
+    }
+
+
 # Template registry
 TEMPLATES: Dict[str, Dict[str, Any]] = {
     "music": get_musicgen_template,
@@ -400,6 +698,12 @@ TEMPLATES: Dict[str, Dict[str, Any]] = {
     "speech": get_whisper_template,
     "vision": get_vision_template,
     "tts": get_tts_template,
+    "vllm": get_vllm_platform_template,
+    "sglang": get_sglang_platform_template,
+    "diffusion": get_diffusion_platform_template,
+    "embedding": get_embedding_platform_template,
+    "video": get_video_template,
+    "moderation": get_moderation_template,
 }
 
 
@@ -418,3 +722,235 @@ def get_template(name: str) -> Dict[str, Any]:
 def get_all_templates() -> Dict[str, Dict[str, Any]]:
     """Get all templates."""
     return {name: getter() for name, getter in TEMPLATES.items()}
+
+
+def get_template_catalog() -> List[Dict[str, Any]]:
+    """
+    Grouped template metadata for the dashboard "New chute" UI.
+
+    Groups align with the main **Type** categories on chutes.ai (LLM, image, video, TTS, STT,
+    music, embeddings, moderation), plus vision under LLM.
+
+    Each group has: id, label, blurb, options[{key, title, subtitle, stack}].
+    Use key ``options`` (not ``items``) so Jinja does not resolve dict ``.items``.
+    ``stack`` is ``platform`` (Chutes pre-built image) or ``custom`` (generated Docker Image()).
+    """
+    catalog: List[Dict[str, Any]] = [
+        {
+            "id": "llm",
+            "label": "LLM",
+            "blurb": "Large language models — platform images or your own stack.",
+            "options": [
+                {
+                    "key": "vllm",
+                    "title": "vLLM",
+                    "subtitle": "Pre-built image — OpenAI-style /v1/chat/completions.",
+                    "stack": "platform",
+                },
+                {
+                    "key": "sglang",
+                    "title": "SGLang",
+                    "subtitle": "Pre-built image — structured generation and batching.",
+                    "stack": "platform",
+                },
+                {
+                    "key": "llm",
+                    "title": "Custom LLM stack",
+                    "subtitle": "Your CUDA image, vLLM/transformers, etc. (custom image build).",
+                    "stack": "custom",
+                },
+                {
+                    "key": "vision",
+                    "title": "Vision / multimodal",
+                    "subtitle": "Image+text API stub — wire LLaVA-style models (custom image build).",
+                    "stack": "custom",
+                },
+            ],
+        },
+        {
+            "id": "image",
+            "label": "Image generation",
+            "blurb": "Text-to-image and hosted diffusion.",
+            "options": [
+                {
+                    "key": "diffusion",
+                    "title": "Diffusion (platform)",
+                    "subtitle": "Pre-built diffusion image — typical POST /generate.",
+                    "stack": "platform",
+                },
+                {
+                    "key": "image",
+                    "title": "Stable Diffusion (custom)",
+                    "subtitle": "Diffusers-style stub — you extend inference (custom image build).",
+                    "stack": "custom",
+                },
+            ],
+        },
+        {
+            "id": "video",
+            "label": "Video",
+            "blurb": "Text-to-video and related pipelines (custom image build).",
+            "options": [
+                {
+                    "key": "video",
+                    "title": "Video generation",
+                    "subtitle": "Scaffold for T2V / I2V — see Chutes video example in docs.",
+                    "stack": "custom",
+                },
+            ],
+        },
+        {
+            "id": "tts",
+            "label": "Text to speech",
+            "blurb": "Speech synthesis from text.",
+            "options": [
+                {
+                    "key": "tts",
+                    "title": "Text-to-speech",
+                    "subtitle": "TTS scaffold e.g. XTTS (custom image build).",
+                    "stack": "custom",
+                },
+            ],
+        },
+        {
+            "id": "speech",
+            "label": "Speech to text",
+            "blurb": "Transcription and audio understanding.",
+            "options": [
+                {
+                    "key": "speech",
+                    "title": "Whisper / speech",
+                    "subtitle": "Speech-to-text scaffold (custom image build).",
+                    "stack": "custom",
+                },
+            ],
+        },
+        {
+            "id": "music",
+            "label": "Music generation",
+            "blurb": "Text-to-music and audio generation.",
+            "options": [
+                {
+                    "key": "music",
+                    "title": "MusicGen",
+                    "subtitle": "Text-to-music with AudioCraft (custom image build).",
+                    "stack": "custom",
+                },
+            ],
+        },
+        {
+            "id": "embeddings",
+            "label": "Embeddings",
+            "blurb": "Text vectors for search, RAG, and similarity.",
+            "options": [
+                {
+                    "key": "embedding",
+                    "title": "Embeddings",
+                    "subtitle": "Pre-built image — OpenAI-style POST /v1/embeddings.",
+                    "stack": "platform",
+                },
+            ],
+        },
+        {
+            "id": "moderation",
+            "label": "Content moderation",
+            "blurb": "Classifiers and safety models.",
+            "options": [
+                {
+                    "key": "moderation",
+                    "title": "Content moderation",
+                    "subtitle": "Policy / toxicity scaffold — implement cords (custom image build).",
+                    "stack": "custom",
+                },
+            ],
+        },
+    ]
+    flat = [opt["key"] for group in catalog for opt in group["options"]]
+    registered = set(TEMPLATES.keys())
+    keys = set(flat)
+    if keys != registered:
+        missing = sorted(registered - keys)
+        extra = sorted(keys - registered)
+        raise RuntimeError(
+            "Template catalog out of sync with TEMPLATES: "
+            f"missing={missing!r} extra={extra!r}"
+        )
+    return catalog
+
+
+# Home page: group saved configs by stack (matches chute_type).
+_HOME_SECTION_DEFS: List[tuple[str, str, str, frozenset[str]]] = [
+    (
+        "prebuilt-llm",
+        "Pre-built · Text & chat",
+        "vLLM and SGLang — Chutes platform images (no custom Dockerfile in code).",
+        frozenset({"vllm", "sglang"}),
+    ),
+    (
+        "prebuilt-image",
+        "Pre-built · Image generation",
+        "Chutes diffusion template — typical POST /generate.",
+        frozenset({"diffusion"}),
+    ),
+    (
+        "prebuilt-embed",
+        "Pre-built · Embeddings",
+        "OpenAI-style POST /v1/embeddings.",
+        frozenset({"embedding"}),
+    ),
+    (
+        "custom-stack",
+        "Custom Docker stacks",
+        "Generated Image() recipes — custom image build on Chutes.",
+        frozenset(
+            {
+                "music",
+                "image",
+                "llm",
+                "speech",
+                "vision",
+                "tts",
+                "custom",
+                "video",
+                "moderation",
+            }
+        ),
+    ),
+]
+
+
+def group_local_configs_for_home(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Split dashboard home rows into ordered sections for clearer scanning.
+    Each section: id, title, blurb, rows.
+    """
+    errors = [r for r in rows if r.get("error")]
+    ok = [r for r in rows if not r.get("error")]
+    out: List[Dict[str, Any]] = []
+    if errors:
+        out.append(
+            {
+                "id": "errors",
+                "title": "Needs attention",
+                "blurb": "These config files failed to load — open YAML or remove them.",
+                "rows": errors,
+            }
+        )
+    used: set[str] = set()
+    for sid, title, blurb, types in _HOME_SECTION_DEFS:
+        chunk = [r for r in ok if r.get("type") in types]
+        for r in chunk:
+            used.add(r["name"])
+        if chunk:
+            out.append({"id": sid, "title": title, "blurb": blurb, "rows": chunk})
+    leftover = [r for r in ok if r["name"] not in used]
+    if leftover:
+        out.append(
+            {
+                "id": "other",
+                "title": "Other",
+                "blurb": "Configs that did not match a known group.",
+                "rows": leftover,
+            }
+        )
+    return out

@@ -27,7 +27,7 @@ model:
   custom_download_url: null
 hardware:
   gpu_count: 1
-  min_vram_gb_per_gpu: 12
+  min_vram_gb_per_gpu: 16
   include:
   - rtx4090
   - rtx3090

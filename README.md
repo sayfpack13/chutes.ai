@@ -9,6 +9,7 @@ This repo helps you **manage many Chutes** with **YAML configs**, a small **web 
 | Path | Purpose |
 |------|---------|
 | [`configs/*.yaml`](configs/) | Your chute definitions (one file per chute) |
+| [`configs/prebuilt-*.yaml`](configs/) | **Chutes platform templates** (vLLM, SGLang, diffusion, embeddings) — no custom `Image()` in generated code |
 | [`configs/templates/*.yaml`](configs/templates/) | Starter templates (music, image, LLM, …) |
 | [`config.example.yaml`](config.example.yaml) | Annotated example schema |
 | [`core/`](core/) | Config models, YAML I/O, codegen, deploy helpers |
@@ -62,6 +63,8 @@ The Chutes CLI **does not run in normal Windows Python** — you’ll see **`No 
 
 ## Web dashboard
 
+**Public image playground:** open [http://127.0.0.1:8765/playground/image](http://127.0.0.1:8765/playground/image) (with the dashboard running) to call **Chutes hosted** image models with a **dynamic form** (fields from OpenAPI when available, otherwise a safe default set). Your API key is only used **server-side**.
+
 From the repo root (reload **only** `dashboard/` and `core/` so edits under `chute_packages/` do not restart the server in a loop):
 
 ```powershell
@@ -106,8 +109,16 @@ API reference: [overview](https://chutes.ai/docs/api-reference/overview), [Gener
 # Write all built-in templates (music, image, llm, speech, vision, tts) to configs/templates/
 python cli.py seed-templates
 
-# New config from a built-in template key: music | image | llm | speech | vision | tts
+# New config from a built-in template key:
+#   music | image | llm | speech | vision | tts  (custom Docker Image() codegen)
+#   vllm | sglang | diffusion | embedding       (Chutes pre-built images — recommended to avoid custom image builds)
 python cli.py new music my-song --username your_username
+python cli.py new vllm my-llm --username your_username
+
+# Ready-made pre-built-image configs under configs/ (edit username, then generate if you changed YAML):
+#   prebuilt-vllm, prebuilt-vllm-phi, prebuilt-vllm-llama, prebuilt-sglang, prebuilt-sglang-mistral,
+#   prebuilt-diffusion, prebuilt-diffusion-flux, prebuilt-diffusion-sd15,
+#   prebuilt-embedding, prebuilt-embedding-large
 
 # Generate Python into chute_packages/
 python cli.py generate music-gen
@@ -125,6 +136,8 @@ Or from repo root:
 python cli.py build music-gen
 python cli.py deploy music-gen
 ```
+
+**Visibility:** `chutes deploy … --accept-fee` without `--public` is a **private** chute (only your account); the dashboard and `core/deployer.py` follow that. Use the website while logged in, or call the chute URL with your API key as in the [deploy docs](https://chutes.ai/docs/cli/deploy). To allow specific other users, use `chutes share` (same docs).
 
 ```powershell
 python cli.py status
@@ -166,6 +179,29 @@ curl -X POST "https://your_username-music-gen.chutes.ai/generate" ^
 - **`chutes` not found:** install with `pip install -r requirements-chutes.txt` (see **Install** above) and ensure `chutes` is on `PATH`.
 - **402 on deploy:** pass `--accept-fee` (dashboard deploy already does).
 - **Wrong CLI subcommands:** this project assumes patterns like `chutes chutes list` per [Chutes docs](https://chutes.ai/docs/cli/deploy). If your CLI version differs, adjust [`core/deployer.py`](core/deployer.py).
+
+- **Custom image / $50 balance:** building a chute that defines its own `Image(...)` (like the MusicGen package) counts as a **custom image** on Chutes and needs **≥ $50** account balance. [Pre-built templates](https://chutes.ai/docs/guides/templates) (vLLM, SGLang, etc.) avoid that build path but only cover **LLM serving**, not arbitrary apps like MusicGen unless you switch to a supported model stack.
+
+- **Diffusion template API:** current `chutes` uses `build_diffusion_chute(username=..., name=..., model_name_or_url=..., ...)` and optional `pipeline_args` (YAML `engine_args`). If you see `unexpected keyword argument 'model_name'`, upgrade the repo or run **Prepare** again to refresh `chute_packages/*_diffusion*_chute.py`.
+
+- **NodeSelector VRAM:** Chutes’ `NodeSelector` enforces **`min_vram_gb_per_gpu` ≥ 16**. Values below that fail at import with a Pydantic validation error.
+
+## Pre-built templates: no `chutes build`
+
+Chute types **vllm**, **sglang**, **diffusion**, and **embedding** use Chutes’ **standard platform images**. The CLI will say there is **nothing to build** — run **Prepare** (codegen), then **`chutes deploy module:chute --accept-fee`** from `chute_packages/`. The dashboard **Build** step is skipped or records an automatic skip.
+
+## Public hosted image API (from your website)
+
+Many image models (e.g. SDXL) are available on **`https://image.chutes.ai/generate`** without deploying your own chute. Use your **API token** on the **server** (Node, Python, etc.) — do not expose it in the browser. Example:
+
+```bash
+curl -X POST 'https://image.chutes.ai/generate' \
+  -H "Authorization: Bearer $CHUTES_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"stabilityai/stable-diffusion-xl-base-1.0","prompt":"…","width":1024,"height":1024,"num_inference_steps":50}'
+```
+
+See the Chutes site **Discover / API** for other public endpoints and models.
 
 ## Resources
 
