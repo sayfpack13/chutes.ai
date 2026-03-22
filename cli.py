@@ -95,7 +95,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         print("chute_packages/ missing. Run: python cli.py generate", args.name, file=sys.stderr)
         return 1
     print(f"Running: chutes build {ref} --wait (cwd={cwd})")
-    res = build_chute(ref, cwd=cwd, wait=True)
+    res = build_chute(ref, cwd=cwd, wait=True, repo_root=ROOT)
     print(res.stdout)
     if res.stderr:
         print(res.stderr, file=sys.stderr)
@@ -108,7 +108,12 @@ def cmd_deploy(args: argparse.Namespace) -> int:
     ref = module_ref(cfg)
     cwd = ROOT / "chute_packages"
     print(f"Running: chutes deploy {ref} (cwd={cwd})")
-    res = deploy_chute(ref, cwd=cwd, accept_fee=not args.no_accept_fee)
+    res = deploy_chute(
+        ref,
+        cwd=cwd,
+        accept_fee=not args.no_accept_fee,
+        repo_root=ROOT,
+    )
     print(res.stdout)
     if res.stderr:
         print(res.stderr, file=sys.stderr)
@@ -116,7 +121,7 @@ def cmd_deploy(args: argparse.Namespace) -> int:
 
 
 def cmd_status(_args: argparse.Namespace) -> int:
-    res = chutes_list()
+    res = chutes_list(repo_root=ROOT)
     print(res.stdout)
     if res.stderr:
         print(res.stderr, file=sys.stderr)
@@ -124,7 +129,7 @@ def cmd_status(_args: argparse.Namespace) -> int:
 
 
 def cmd_logs(args: argparse.Namespace) -> int:
-    res = chutes_logs(args.name, tail=args.tail)
+    res = chutes_logs(args.name, tail=args.tail, repo_root=ROOT)
     print(res.stdout)
     if res.stderr:
         print(res.stderr, file=sys.stderr)
@@ -132,7 +137,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
 
 
 def cmd_get(args: argparse.Namespace) -> int:
-    res = chutes_get(args.name)
+    res = chutes_get(args.name, repo_root=ROOT)
     print(res.stdout)
     if res.stderr:
         print(res.stderr, file=sys.stderr)

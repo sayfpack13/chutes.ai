@@ -1,0 +1,9 @@
+# Chutes CLI (separate install).
+#
+# Python 3.12 on Windows: netifaces often has no wheel → pip builds from source
+# and needs MSVC. Fix one of:
+#   - Install C++ Build Tools: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+#   - Or use Python 3.11 for chutes only: py -3.11 -m pip install chutes
+#
+# Your 3.12 venv is still fine for: pip install -r requirements.txt (dashboard).
+chutes>=0.1.0

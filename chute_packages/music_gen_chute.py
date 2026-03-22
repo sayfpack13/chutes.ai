@@ -51,7 +51,7 @@ from chutes.image import Image
 
 image = (
     Image(
-        username='your_username',
+        username='sayfpack',
         name='musicgen-chute',
         tag='1.0.0',
         readme='MusicGen text-to-music',
@@ -88,7 +88,7 @@ image = (
 from chutes.chute import Chute, NodeSelector
 
 chute = Chute(
-    username='your_username',
+    username='sayfpack',
     name='music-gen',
     tagline='AI Music Generation with MusicGen',
     readme='# MusicGen\n\nText-to-music via Meta MusicGen. Edit username and run generate + build.',

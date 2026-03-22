@@ -27,6 +27,8 @@ from .deployer import (
     chutes_list,
     chutes_get,
     chutes_logs,
+    chutes_executable,
+    chutes_on_path,
     CommandResult,
 )
 from .seed_templates import seed_builtin_templates
@@ -54,6 +56,8 @@ __all__ = [
     "chutes_list",
     "chutes_get",
     "chutes_logs",
+    "chutes_executable",
+    "chutes_on_path",
     "CommandResult",
     "seed_builtin_templates",
 ]

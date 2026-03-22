@@ -1,18 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Edit {{ name }} · Chutes AI Manager{% endblock %}
+{% block title %}Advanced · {{ name }} · Chutes{% endblock %}
 {% block content %}
-<h1>Edit <code>{{ name }}.yaml</code></h1>
-<p class="muted">Set <code>username</code>, <code>chute_type</code> (music, image, llm, …), model, hardware, and docker packages. Then generate Python.</p>
+<div class="advanced-banner">
+  <strong>Advanced:</strong> raw YAML settings. Most people use
+  <a href="/chute/{{ name }}">Deploy this chute</a> instead.
+</div>
+
+<h1>Edit {{ name }}</h1>
+<p class="muted">Change username, model, hardware, and other options below. Invalid YAML cannot be saved.</p>
+
 <form method="post" action="/config/{{ name }}/edit" class="form stack">
   <textarea name="yaml_text" rows="28" class="code">{{ yaml_text }}</textarea>
   <div class="row">
-    <button type="submit" class="btn">Save YAML</button>
-    <button type="button" class="btn secondary js-generate" data-name="{{ name }}">Generate code</button>
-    <button type="button" class="btn secondary js-build" data-name="{{ name }}">Build (CLI)</button>
-    <button type="button" class="btn secondary js-deploy" data-name="{{ name }}">Deploy (CLI)</button>
-    <a href="/">Back</a>
+    <button type="submit" class="btn">Save</button>
+    <a href="/chute/{{ name }}" class="btn secondary">Back to deploy steps</a>
+    <a href="/">Home</a>
   </div>
 </form>
-<pre id="out" class="log" hidden></pre>
+
+<details class="config-edit-dev">
+  <summary>Developer shortcuts (same as API)</summary>
+  <p class="muted small">Runs on your computer via the Chutes CLI.</p>
+  <div class="row">
+    <button type="button" class="btn secondary js-generate" data-name="{{ name }}">Generate code</button>
+    <button type="button" class="btn secondary js-build" data-name="{{ name }}">Build</button>
+    <button type="button" class="btn secondary js-deploy" data-name="{{ name }}">Deploy</button>
+  </div>
+  <pre id="out" class="log" hidden></pre>
+</details>
+
 <script src="/static/js/app.js"></script>
 {% endblock %}

@@ -10,30 +10,49 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import yaml
-from fastapi import FastAPI, Form, HTTPException, Request
+from urllib.parse import quote
+
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from core import (
     ChuteConfig,
+    CommandResult,
     ConfigManager,
     build_chute,
     chutes_list,
+    chutes_logs,
+    chutes_on_path,
     deploy_chute,
     get_template_names,
     module_ref,
     seed_builtin_templates,
     write_chute_module,
 )
+from core.chutes_api_client import (
+    api_get_authenticated,
+    api_get_public,
+    api_request_authenticated,
+    probe_chutes_api,
+)
+from core.credentials_store import (
+    load_credentials,
+    mask_api_key,
+    parse_settings_form,
+    save_credentials,
+    write_minimal_chutes_ini,
+)
 
-app = FastAPI(title="Chutes AI Manager", version="0.1.0")
+app = FastAPI(title="Chutes", version="0.1.0")
 
 app.mount(
     "/static",
@@ -43,9 +62,33 @@ app.mount(
 
 templates = Jinja2Templates(directory=str(ROOT / "dashboard" / "templates"))
 
+PWD_WINDOWS_HINT = (
+    "The Chutes CLI does not run in Windows Python (missing Unix module 'pwd'). "
+    "On a Windows-only PC, use WSL2: Ubuntu from the Microsoft Store / wsl --install, "
+    "then install Python + chutes inside WSL and run build/deploy there (same machine). "
+    "See README section “Windows only?”."
+)
+
+
+def cli_stderr_hint(stderr: str) -> Optional[str]:
+    """Short explanation for common CLI failures (shown in API JSON and UI)."""
+    if not stderr:
+        return None
+    s = stderr
+    if "No module named 'pwd'" in s or 'No module named "pwd"' in s or "module 'pwd'" in s:
+        return PWD_WINDOWS_HINT
+    if "ModuleNotFoundError" in s and "pwd" in s:
+        return PWD_WINDOWS_HINT
+    return None
+
 
 def manager() -> ConfigManager:
     return ConfigManager(str(ROOT / "configs"))
+
+
+def _api_context() -> tuple[str, str]:
+    c = load_credentials(ROOT)
+    return c.effective_base_url(), c.api_key.strip()
 
 
 @app.on_event("startup")
@@ -57,6 +100,53 @@ def _startup() -> None:
     (ROOT / "chute_packages" / "__init__.py").write_text(
         '"""Generated Chute modules."""\n', encoding="utf-8"
     )
+
+
+@app.get("/settings/account", response_class=HTMLResponse)
+async def settings_account(request: Request):
+    creds = load_credentials(ROOT)
+    ini_path = write_minimal_chutes_ini(ROOT, creds)
+    return templates.TemplateResponse(
+        "settings_account.html",
+        {
+            "request": request,
+            "creds": creds,
+            "key_masked": mask_api_key(creds.api_key),
+            "generated_ini": str(ini_path.relative_to(ROOT)) if ini_path else "",
+        },
+    )
+
+
+@app.post("/settings/account")
+async def settings_account_save(
+    api_key: str = Form(""),
+    api_base_url: str = Form(""),
+    chutes_config_path: str = Form(""),
+    clear_key: Optional[str] = Form(None),
+):
+    existing = load_credentials(ROOT)
+    new_creds = parse_settings_form(
+        api_key=api_key,
+        api_base_url=api_base_url,
+        chutes_config_path=chutes_config_path,
+        existing=existing,
+        clear_key=bool(clear_key),
+    )
+    save_credentials(ROOT, new_creds)
+    write_minimal_chutes_ini(ROOT, new_creds)
+    return RedirectResponse(url="/settings/account", status_code=303)
+
+
+@app.post("/api/probe")
+async def api_probe(
+    api_key: str = Form(""),
+    api_base_url: str = Form(""),
+):
+    """Test API key against Chutes HTTP API (see API reference)."""
+    existing = load_credentials(ROOT)
+    key = (api_key or "").strip() or existing.api_key
+    base = (api_base_url or "").strip() or existing.api_base_url
+    return probe_chutes_api(key, base)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -77,10 +167,47 @@ async def index(request: Request):
             )
         except Exception as exc:
             rows.append({"name": n, "error": str(exc)})
+    creds = load_credentials(ROOT)
     return templates.TemplateResponse(
         "index.html",
-        {"request": request, "rows": rows, "root": ""},
+        {
+            "request": request,
+            "rows": rows,
+            "root": "",
+            "api_key_configured": bool(creds.api_key.strip()),
+            "chutes_cli_on_path": chutes_on_path(),
+        },
     )
+
+
+@app.get("/api/health-summary")
+async def api_health_summary():
+    base, _ = _api_context()
+    ping = api_get_public(base, "/ping")
+    c = load_credentials(ROOT)
+    return {
+        "api_key_configured": bool(c.api_key.strip()),
+        "chutes_on_path": chutes_on_path(),
+        "api_base_url": c.effective_base_url(),
+        "ping_ok": bool(ping.get("ok")),
+        "ping_status": ping.get("status"),
+    }
+
+
+@app.get("/api/cli/logs")
+async def api_cli_logs(
+    chute_name: str = Query(..., min_length=1, description="Platform chute name for chutes logs"),
+    tail: int = Query(50, ge=1, le=500),
+):
+    """Wraps `chutes chutes logs <name> --tail N`."""
+    res = chutes_logs(chute_name.strip(), tail=tail, repo_root=ROOT)
+    return {
+        "ok": res.ok,
+        "returncode": res.returncode,
+        "stdout": res.stdout,
+        "stderr": res.stderr,
+        "chute_name": chute_name.strip(),
+    }
 
 
 @app.get("/config/new", response_class=HTMLResponse)
@@ -118,7 +245,7 @@ async def config_new_create(
         data["username"] = username.strip()
     cfg = ChuteConfig(**data)
     m.save_config(cfg)
-    return RedirectResponse(url=f"/config/{name}/edit", status_code=303)
+    return RedirectResponse(url=f"/chute/{name}", status_code=303)
 
 
 @app.get("/config/{name}/edit", response_class=HTMLResponse)
@@ -158,6 +285,41 @@ async def config_delete(name: str):
     return RedirectResponse(url="/", status_code=303)
 
 
+@app.get("/chute/{name}", response_class=HTMLResponse)
+async def chute_flow_page(request: Request, name: str):
+    """Simple step-by-step deploy flow for one local chute."""
+    m = manager()
+    if not m.config_exists(name):
+        raise HTTPException(404, "Chute not found")
+    chute_type = ""
+    username = ""
+    model_name = ""
+    load_error: Optional[str] = None
+    try:
+        cfg = m.load_config(name)
+        chute_type = cfg.chute_type
+        username = cfg.username
+        model_name = cfg.model.name
+    except Exception as exc:
+        load_error = str(exc)
+    creds = load_credentials(ROOT)
+    return templates.TemplateResponse(
+        "chute_flow.html",
+        {
+            "request": request,
+            "name": name,
+            "chute_type": chute_type,
+            "username": username,
+            "model_name": model_name,
+            "load_error": load_error,
+            "api_key_configured": bool(creds.api_key.strip()),
+            "chutes_cli_on_path": chutes_on_path(),
+            # Chutes PyPI CLI imports Unix-only stdlib (e.g. pwd) — often breaks on native Windows.
+            "is_windows": sys.platform == "win32",
+        },
+    )
+
+
 @app.post("/api/generate/{name}")
 async def api_generate(name: str):
     m = manager()
@@ -172,14 +334,18 @@ async def api_build(name: str):
     cfg = m.load_config(name)
     ref = module_ref(cfg)
     cwd = ROOT / "chute_packages"
-    res = build_chute(ref, cwd=cwd, wait=True)
-    return {
+    res = build_chute(ref, cwd=cwd, wait=True, repo_root=ROOT)
+    out: dict = {
         "ok": res.ok,
         "returncode": res.returncode,
         "stdout": res.stdout,
         "stderr": res.stderr,
         "ref": ref,
     }
+    hint = cli_stderr_hint(res.stderr or "")
+    if hint:
+        out["hint"] = hint
+    return out
 
 
 @app.post("/api/deploy/{name}")
@@ -188,22 +354,209 @@ async def api_deploy(name: str):
     cfg = m.load_config(name)
     ref = module_ref(cfg)
     cwd = ROOT / "chute_packages"
-    res = deploy_chute(ref, cwd=cwd, accept_fee=True)
-    return {
+    res = deploy_chute(ref, cwd=cwd, accept_fee=True, repo_root=ROOT)
+    out: dict = {
         "ok": res.ok,
         "returncode": res.returncode,
         "stdout": res.stdout,
         "stderr": res.stderr,
         "ref": ref,
     }
+    hint = cli_stderr_hint(res.stderr or "")
+    if hint:
+        out["hint"] = hint
+    return out
+
+
+@app.get("/diagnostics", response_class=HTMLResponse)
+async def diagnostics_page(request: Request):
+    """Plain-language troubleshooting page (replaces raw JSON for most users)."""
+    creds = load_credentials(ROOT)
+    try:
+        res = chutes_list(repo_root=ROOT)
+    except Exception as e:
+        res = CommandResult(ok=False, returncode=-1, stdout="", stderr=str(e))
+    return templates.TemplateResponse(
+        "diagnostics.html",
+        {
+            "request": request,
+            "api_key_configured": bool(creds.api_key.strip()),
+            "chutes_on_path": chutes_on_path(),
+            "api_base_url": creds.effective_base_url(),
+            "chutes_config_path_set": bool(creds.chutes_config_path.strip()),
+            "returncode": res.returncode,
+            "list_ok": res.ok,
+            "stdout": res.stdout or "",
+            "stderr": res.stderr or "",
+        },
+    )
 
 
 @app.get("/api/status")
 async def api_status():
-    res = chutes_list()
+    c = load_credentials(ROOT)
+    try:
+        res = chutes_list(repo_root=ROOT)
+    except Exception as e:
+        return {
+            "chutes_on_path": chutes_on_path(),
+            "api_key_configured": bool(c.api_key.strip()),
+            "api_base_url": c.effective_base_url(),
+            "chutes_config_path_set": bool(c.chutes_config_path.strip()),
+            "ok": False,
+            "returncode": -1,
+            "stdout": "",
+            "stderr": f"chutes_list failed: {e}",
+        }
     return {
+        "chutes_on_path": chutes_on_path(),
+        "api_key_configured": bool(c.api_key.strip()),
+        "api_base_url": c.effective_base_url(),
+        "chutes_config_path_set": bool(c.chutes_config_path.strip()),
         "ok": res.ok,
         "returncode": res.returncode,
         "stdout": res.stdout,
         "stderr": res.stderr,
     }
+
+
+# --- Chutes REST API browser (https://chutes.ai/docs/api-reference/overview) ---
+
+
+@app.get("/platform")
+async def platform_redirect():
+    """Old URL → advanced tools (bookmarks still work)."""
+    return RedirectResponse(url="/platform/advanced", status_code=302)
+
+
+@app.get("/platform/advanced", response_class=HTMLResponse)
+async def platform_advanced_page(request: Request):
+    base, key = _api_context()
+    return templates.TemplateResponse(
+        "platform.html",
+        {
+            "request": request,
+            "api_base_url": base,
+            "has_api_key": bool(key),
+        },
+    )
+
+
+@app.get("/api/platform/ping")
+async def platform_ping():
+    base, _ = _api_context()
+    return api_get_public(base, "/ping")
+
+
+@app.get("/api/platform/pricing")
+async def platform_pricing():
+    base, _ = _api_context()
+    return api_get_public(base, "/pricing")
+
+
+@app.get("/api/platform/chutes")
+async def platform_list_chutes(
+    limit: int = Query(25, ge=1, le=100),
+    page: int = Query(0, ge=0),
+    name: str = Query(""),
+):
+    base, key = _api_context()
+    q: dict = {"limit": limit, "page": page}
+    if name.strip():
+        q["name"] = name.strip()
+    return api_get_authenticated(base, "/chutes/", key, query=q)
+
+
+@app.get("/api/platform/images")
+async def platform_list_images(
+    limit: int = Query(25, ge=1, le=100),
+    page: int = Query(0, ge=0),
+    name: str = Query(""),
+    tag: str = Query(""),
+):
+    base, key = _api_context()
+    q: dict = {"limit": limit, "page": page}
+    if name.strip():
+        q["name"] = name.strip()
+    if tag.strip():
+        q["tag"] = tag.strip()
+    return api_get_authenticated(base, "/images/", key, query=q)
+
+
+@app.get("/api/platform/chutes/detail/{chute_id:path}")
+async def platform_chute_detail(chute_id: str):
+    base, key = _api_context()
+    enc = quote(chute_id.strip(), safe="")
+    return api_get_authenticated(base, f"/chutes/{enc}", key)
+
+
+@app.get("/api/platform/chutes/warmup/{chute_id:path}")
+async def platform_chute_warmup(chute_id: str):
+    """GET /chutes/warmup/{chute_id_or_name} — see Chutes API reference."""
+    base, key = _api_context()
+    enc = quote(chute_id.strip(), safe="")
+    return api_get_authenticated(base, f"/chutes/warmup/{enc}", key)
+
+
+@app.get("/api/platform/me/quotas")
+async def platform_me_quotas():
+    """GET /users/me/quotas — requires auth."""
+    base, key = _api_context()
+    return api_get_authenticated(base, "/users/me/quotas", key)
+
+
+@app.get("/api/platform/me/discounts")
+async def platform_me_discounts():
+    base, key = _api_context()
+    return api_get_authenticated(base, "/users/me/discounts", key)
+
+
+@app.post("/api/platform/chutes/share")
+async def platform_share_chute(
+    chute_id_or_name: str = Form(...),
+    user_id_or_name: str = Form(...),
+):
+    """POST /chutes/share — see Chutes API reference."""
+    base, key = _api_context()
+    body = {
+        "chute_id_or_name": chute_id_or_name.strip(),
+        "user_id_or_name": user_id_or_name.strip(),
+    }
+    return api_request_authenticated(
+        "POST", base, "/chutes/share", key, json_body=body, timeout=60.0
+    )
+
+
+@app.delete("/api/platform/chutes/by-id/{chute_id:path}")
+async def platform_delete_chute(
+    chute_id: str,
+    confirm: str = Query(..., description="Must exactly match chute id/name in path"),
+):
+    """DELETE /chutes/{chute_id} — confirm must match path (typed confirm)."""
+    raw = chute_id.strip()
+    if confirm.strip() != raw:
+        raise HTTPException(
+            status_code=400,
+            detail="Query param 'confirm' must exactly match the chute id/name in the URL.",
+        )
+    base, key = _api_context()
+    enc = quote(raw, safe="")
+    return api_request_authenticated(
+        "DELETE", base, f"/chutes/{enc}", key, timeout=120.0
+    )
+
+
+@app.get("/api/platform/images/{image_id}/logs")
+async def platform_image_logs(
+    image_id: str,
+    offset: str = Query("", description="Optional log offset cursor"),
+):
+    """GET /images/{image_id}/logs — build logs."""
+    base, key = _api_context()
+    enc = quote(image_id.strip(), safe="")
+    q: dict = {}
+    if offset.strip():
+        q["offset"] = offset.strip()
+    return api_get_authenticated(
+        base, f"/images/{enc}/logs", key, query=q or None, timeout=120.0
+    )

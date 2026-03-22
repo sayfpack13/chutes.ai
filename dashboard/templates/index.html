@@ -1,47 +1,80 @@
 {% extends "base.html" %}
-{% block title %}Configs · Chutes AI Manager{% endblock %}
+{% block title %}My chutes · Chutes{% endblock %}
 {% block content %}
-<h1>Chute configs</h1>
-<p class="muted">Files in <code>configs/*.yaml</code>. Use <strong>Generate</strong> to write <code>chute_packages/&lt;name&gt;_chute.py</code>.</p>
+<span id="home-app" data-has-api-key="{{ 'true' if api_key_configured else 'false' }}" hidden aria-hidden="true"></span>
+<h1>My chutes</h1>
+<p class="muted page-lead">Connect your account, then use <strong>Deploy this chute</strong> to prepare, build, and publish step by step.</p>
 
-<table class="table">
-  <thead>
-    <tr>
-      <th>Name</th>
-      <th>Type</th>
-      <th>Username</th>
-      <th>Model</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
+<div class="connection-strip" id="connection-strip">
+  <div class="connection-item {% if api_key_configured %}ok{% else %}warn{% endif %}" title="Save your API key under Account">
+    <span class="connection-item__label">Chutes account</span>
+    <span class="connection-item__value" id="health-api">{% if api_key_configured %}Key saved{% else %}Not connected{% endif %}</span>
+  </div>
+  <div class="connection-item {% if chutes_cli_on_path %}ok{% else %}warn{% endif %}" title="Install the Chutes CLI and ensure it is on your PATH">
+    <span class="connection-item__label">Build &amp; publish tool</span>
+    <span class="connection-item__value">{% if chutes_cli_on_path %}Ready{% else %}Not installed{% endif %}</span>
+  </div>
+  <div class="connection-item" id="health-ping-wrap">
+    <span class="connection-item__label">Reach Chutes</span>
+    <span class="connection-item__value" id="health-ping">Checking…</span>
+  </div>
+  <div class="connection-strip__links">
+    <a href="/settings/account">Account</a>
+  </div>
+</div>
+
+<section class="home-section">
+  <h2 class="home-section__title">Your chutes</h2>
+  {% if rows %}
+  <ul class="chute-card-list">
     {% for row in rows %}
-    <tr>
-      <td><a href="/config/{{ row.name }}/edit">{{ row.name }}</a></td>
+    <li class="chute-card {% if row.error %}chute-card--err{% endif %}">
       {% if row.error %}
-      <td colspan="4" class="err">{{ row.error }}</td>
+      <div class="chute-card__main">
+        <span class="chute-card__name">{{ row.name }}</span>
+        <p class="err small">{{ row.error }}</p>
+        <a href="/config/{{ row.name }}/edit" class="btn secondary sm">Edit settings (advanced)</a>
+      </div>
       {% else %}
-      <td>{{ row.type }}</td>
-      <td>{{ row.username }}</td>
-      <td class="mono">{{ row.model }}</td>
-      <td class="actions">
-        <button type="button" class="btn js-generate" data-name="{{ row.name }}">Generate</button>
-        <button type="button" class="btn secondary js-build" data-name="{{ row.name }}">Build</button>
-        <button type="button" class="btn secondary js-deploy" data-name="{{ row.name }}">Deploy</button>
-        <form method="post" action="/config/{{ row.name }}/delete" class="inline" onsubmit="return confirm('Delete {{ row.name }}?');">
-          <button type="submit" class="btn danger">Delete</button>
+      <div class="chute-card__main">
+        <span class="chute-card__name">{{ row.name }}</span>
+        <span class="chute-card__meta">{{ row.type }} · {{ row.username }} · {{ row.model }}</span>
+      </div>
+      <div class="chute-card__actions">
+        <a href="/chute/{{ row.name }}" class="btn">Deploy this chute</a>
+        <a href="/config/{{ row.name }}/edit" class="btn secondary sm">Advanced (YAML)</a>
+        <form method="post" action="/config/{{ row.name }}/delete" class="chute-card__delete" onsubmit="return confirm('Remove {{ row.name }} from this computer?');">
+          <button type="submit" class="btn danger sm">Remove</button>
         </form>
-      </td>
+      </div>
       {% endif %}
-    </tr>
+    </li>
     {% endfor %}
-  </tbody>
-</table>
+  </ul>
+  {% else %}
+  <p class="muted">You don’t have any chutes yet. <a href="/config/new">Create one</a> to get started.</p>
+  {% endif %}
+</section>
 
-{% if not rows %}
-<p>No configs yet. <a href="/config/new">Create one from a template</a> or run <code>python cli.py seed-templates</code>.</p>
-{% endif %}
+<section class="home-section" id="whats-live">
+  <h2 class="home-section__title">What’s live on Chutes</h2>
+  <p class="muted small">Chutes already published to your account (from the Chutes website / API).</p>
+  <p class="muted small" id="whats-live-loading">{% if api_key_configured %}Loading…{% else %}Save an API key under <a href="/settings/account">Account</a> to see your live chutes.{% endif %}</p>
+  <div id="whats-live-body" class="whats-live-body"></div>
+  <p class="muted small home-advanced-links">
+    <a href="/platform/advanced">Advanced platform tools</a>
+    · <a href="/diagnostics">Diagnostics</a>
+  </p>
+</section>
 
-<pre id="out" class="log" hidden></pre>
-<script src="/static/js/app.js"></script>
+<details class="home-troubleshoot">
+  <summary>Having trouble? (logs)</summary>
+  <p class="muted small">If a publish step fails, you can fetch recent logs from the Chutes CLI for your chute’s <strong>platform name</strong> (often the same as the name here).</p>
+  <div class="btn-row">
+    <button type="button" class="btn secondary sm" id="btn-home-cli-logs">View CLI logs…</button>
+  </div>
+  <pre id="home-troubleshoot-out" class="log log--compact" hidden></pre>
+</details>
+
+<script src="/static/js/home.js"></script>
 {% endblock %}

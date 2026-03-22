@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Account · Chutes{% endblock %}
+{% block content %}
+<h1>Connect your Chutes account</h1>
+
+<p class="page-lead muted">
+  Save the secret key from the Chutes CLI so this app can talk to Chutes and show what’s live.
+  <a href="https://chutes.ai/docs/cli/account" target="_blank" rel="noopener">How to create a key</a>
+</p>
+
+<div class="warn">
+  <strong>Local only:</strong> no login in this app — use it on <strong>this computer only</strong> (e.g. <code>127.0.0.1</code>).
+  Keys are stored in <code>.local/credentials.json</code> (not committed to git).
+</div>
+
+<form method="post" action="/settings/account" class="form stack" id="save-form">
+  <label>Secret API key
+    <input name="api_key" type="password" autocomplete="off" placeholder="Paste new key, or leave blank to keep saved key" />
+  </label>
+  <p class="muted small">After you create a key with the Chutes CLI, paste it here once, then click <strong>Save</strong>.</p>
+
+  <label class="inline-check">
+    <input type="checkbox" name="clear_key" value="1" />
+    Remove saved key from this app
+  </label>
+
+  <div class="row">
+    <button type="submit" class="btn">Save</button>
+    <button type="button" class="btn secondary" id="btn-probe">Test connection</button>
+    <a href="/">Home</a>
+  </div>
+
+  <details class="settings-advanced">
+    <summary>Advanced (API URL &amp; CLI config)</summary>
+    <label>API base URL
+      <input name="api_base_url" type="url" value="{{ creds.api_base_url }}" placeholder="https://api.chutes.ai" />
+    </label>
+    <p class="muted small">Only change this if Chutes gave you a different API address.</p>
+
+    <label>Optional: path to your Chutes <code>config.ini</code>
+      <input name="chutes_config_path" type="text" value="{{ creds.chutes_config_path }}" placeholder="C:\Users\you\.chutes\config.ini" />
+    </label>
+    <p class="muted small">If you already use <code>chutes auth login</code>, you can point here so build/publish use the same wallet settings.</p>
+  </details>
+</form>
+
+{% if generated_ini %}
+<p class="muted small">Helper file for the CLI: <code>{{ generated_ini }}</code></p>
+{% endif %}
+
+<p class="muted small">Saved key (masked): <code>{{ key_masked }}</code></p>
+
+<pre id="probe-out" class="log" hidden></pre>
+
+<p class="muted small"><a href="/platform/advanced">Advanced platform tools</a> · <a href="/diagnostics">Diagnostics</a></p>
+
+<script>
+document.getElementById("btn-probe").addEventListener("click", async () => {
+  const fd = new FormData();
+  const keyInput = document.querySelector('input[name="api_key"]');
+  const baseInput = document.querySelector('input[name="api_base_url"]');
+  if (keyInput.value) fd.append("api_key", keyInput.value);
+  if (baseInput && baseInput.value) fd.append("api_base_url", baseInput.value);
+  const el = document.getElementById("probe-out");
+  el.hidden = false;
+  el.textContent = "Testing…";
+  const res = await fetch("/api/probe", { method: "POST", body: fd });
+  const data = await res.json();
+  el.textContent = JSON.stringify(data, null, 2);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Advanced · Platform tools{% endblock %}
+{% block content %}
+<div
+  class="platform-page"
+  id="platform-app"
+  data-has-api-key="{{ 'true' if has_api_key else 'false' }}"
+>
+  <header class="page-head">
+    <p class="page-kicker"><a href="/">← Home</a> · <a href="/settings/account">Account</a></p>
+    <h1>Advanced: platform tools</h1>
+    <p class="muted page-lead">
+      One view: your <strong>deployed chutes</strong> and <strong>images</strong> load together when you open this page (with a saved API key).
+      Pick a row to pre-fill share/delete, or use <strong>Detail</strong> / <strong>Warmup</strong> — results show in the inspector below.
+    </p>
+  </header>
+
+  {% if not has_api_key %}
+  <div class="warn">
+    Save an API key to load your deployed chutes and images automatically.
+    <a href="/settings/account">Add your <code>cpk_…</code> key</a>.
+  </div>
+  {% endif %}
+
+  <section class="platform-card platform-card--highlight workflow-toolbar" id="sec-overview">
+    <div class="workflow-toolbar__row">
+      <div class="workflow-toolbar__main">
+        <h2 class="platform-card__title workflow-title">Live overview</h2>
+        <p class="muted small workflow-sub" id="overview-strip">
+          {% if has_api_key %}Loading your chutes and images…{% else %}Add an API key to sync this view.{% endif %}
+        </p>
+      </div>
+      <div class="btn-row workflow-toolbar__actions">
+        <button type="button" class="btn" id="btn-refresh-overview" {% if not has_api_key %}disabled{% endif %}>
+          Refresh overview
+        </button>
+        <button type="button" class="btn secondary" id="btn-overview-ping">Ping API</button>
+      </div>
+    </div>
+    <p class="muted small workflow-hint" id="workflow-selection">No chute selected — click a chute row to select it for share/delete.</p>
+  </section>
+
+  <div class="workflow-split">
+    <section class="platform-card workflow-panel" id="sec-chutes">
+      <div class="workflow-panel__head">
+        <h3 class="workflow-panel__title">Deployed chutes</h3>
+        <span class="endpoint-pill">GET /chutes/</span>
+      </div>
+      <div class="field-grid workflow-filters">
+        <label class="field">Limit <input type="number" id="chutes-limit" value="50" min="1" max="100" /></label>
+        <label class="field">Page <input type="number" id="chutes-page" value="0" min="0" /></label>
+        <label class="field field--grow">Filter name <input type="text" id="chutes-name" placeholder="optional" /></label>
+        <button type="button" class="btn secondary sm" id="btn-refresh-chutes-only">Apply &amp; refresh</button>
+      </div>
+      <div id="chutes-table" class="table-wrap table-wrap--workflow"></div>
+    </section>
+
+    <section class="platform-card workflow-panel" id="sec-images">
+      <div class="workflow-panel__head">
+        <h3 class="workflow-panel__title">Images</h3>
+        <span class="endpoint-pill">GET /images/</span>
+      </div>
+      <div class="field-grid workflow-filters">
+        <label class="field">Limit <input type="number" id="images-limit" value="50" min="1" max="100" /></label>
+        <label class="field">Page <input type="number" id="images-page" value="0" min="0" /></label>
+        <label class="field field--grow">Name <input type="text" id="images-name" placeholder="optional" /></label>
+        <label class="field">Tag <input type="text" id="images-tag" placeholder="optional" /></label>
+        <button type="button" class="btn secondary sm" id="btn-refresh-images-only">Apply &amp; refresh</button>
+      </div>
+      <div id="images-table" class="table-wrap table-wrap--workflow"></div>
+    </section>
+  </div>
+
+  <section class="platform-card workflow-inspector" id="sec-inspector" aria-live="polite">
+    <div class="platform-card__head">
+      <h2 class="platform-card__title">Inspector</h2>
+      <div class="result-meta">
+        <span class="badge badge--muted" id="workflow-badge">Ready</span>
+        <span class="result-url mono small" id="workflow-url"></span>
+      </div>
+    </div>
+    <div id="workflow-summary" class="result-summary">
+      <p class="muted small">Detail, warmup, image logs, and account calls show here.</p>
+    </div>
+    <details class="result-raw">
+      <summary>Raw JSON <span class="muted small">(debugging)</span></summary>
+      <pre id="workflow-json" class="log log--compact">{}</pre>
+    </details>
+  </section>
+
+  <details class="platform-card platform-advanced" id="sec-advanced">
+    <summary class="platform-advanced__summary">More tools <span class="muted small">(pricing, account, share, delete, manual logs)</span></summary>
+    <div class="platform-advanced__body">
+      <div class="advanced-block">
+        <h4>Public</h4>
+        <div class="btn-row">
+          <button type="button" class="btn secondary js-api" data-url="/api/platform/pricing" data-label="GET /pricing">Pricing</button>
+        </div>
+      </div>
+      <div class="advanced-block">
+        <h4>Account</h4>
+        <div class="btn-row">
+          <button type="button" class="btn secondary js-api" data-url="/api/platform/me/quotas" data-label="GET /users/me/quotas">Quotas</button>
+          <button type="button" class="btn secondary js-api" data-url="/api/platform/me/discounts" data-label="GET /users/me/discounts">Discounts</button>
+        </div>
+      </div>
+      <div class="advanced-block">
+        <h4>Chute by id <span class="muted small">(same as table actions)</span></h4>
+        <div class="field-grid field-grid--single">
+          <label class="field field--grow">Chute id or name <input type="text" id="chute-lookup" placeholder="or select a row above" /></label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn" id="btn-detail" data-label="GET /chutes/{id}">Detail</button>
+          <button type="button" class="btn secondary" id="btn-warmup" data-label="GET /chutes/warmup/{id}">Warmup</button>
+        </div>
+      </div>
+      <div class="advanced-block">
+        <h4>Share chute</h4>
+        <div class="field-grid">
+          <label class="field field--grow">Chute id or name <input type="text" id="share-chute" placeholder="from selected row" /></label>
+          <label class="field field--grow">User id or name <input type="text" id="share-user" placeholder="colleague" /></label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn secondary" id="btn-share" data-label="POST /chutes/share">Share</button>
+        </div>
+      </div>
+      <div class="advanced-block advanced-block--danger">
+        <h4>Delete chute</h4>
+        <p class="muted small">Platform only — not local YAML. Confirm twice.</p>
+        <div class="field-grid field-grid--single">
+          <label class="field field--grow">Chute id or name <input type="text" id="delete-chute-id" placeholder="from selected row" /></label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn danger" id="btn-delete-chute" data-label="DELETE /chutes/{id}">Delete</button>
+        </div>
+      </div>
+      <div class="advanced-block">
+        <h4>Image build logs</h4>
+        <div class="field-grid">
+          <label class="field field--grow">Image id <input type="text" id="image-logs-id" placeholder="from images table" /></label>
+          <label class="field field--grow">Offset <input type="text" id="image-logs-offset" placeholder="optional cursor" /></label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn secondary" id="btn-image-logs" data-label="GET /images/{id}/logs">Fetch logs</button>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script src="/static/js/platform.js"></script>
+{% endblock %}

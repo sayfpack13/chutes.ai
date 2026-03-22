@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Diagnostics · Chutes{% endblock %}
+{% block content %}
+<h1>Diagnostics</h1>
+<p class="muted page-lead">Technical details for troubleshooting. Most people don’t need this page.</p>
+
+<div class="platform-card">
+  <h2 class="platform-card__title">Connection</h2>
+  <dl class="kv-grid">
+    <dt>API key saved</dt><dd>{% if api_key_configured %}Yes{% else %}<span class="err">No</span> — <a href="/settings/account">Account</a>{% endif %}</dd>
+    <dt>Chutes command (CLI)</dt><dd>{% if chutes_on_path %}Found on PATH{% else %}<span class="err">Not found</span> — install Chutes CLI{% endif %}</dd>
+    <dt>API base URL</dt><dd class="mono">{{ api_base_url }}</dd>
+    <dt>CLI config path set</dt><dd>{% if chutes_config_path_set %}Yes{% else %}No (optional){% endif %}</dd>
+  </dl>
+</div>
+
+<div class="platform-card">
+  <h2 class="platform-card__title">Last <code>chutes chutes list</code></h2>
+  <p class="muted small">Exit code: <strong>{{ returncode }}</strong> · OK: <strong>{{ list_ok }}</strong></p>
+  {% if stderr %}
+  <h3 class="result-block-title">Stderr</h3>
+  <pre class="text-block">{{ stderr }}</pre>
+  {% endif %}
+  {% if stdout %}
+  <h3 class="result-block-title">Stdout</h3>
+  <pre class="text-block">{{ stdout }}</pre>
+  {% endif %}
+</div>
+
+<p class="muted small"><a href="/">← Home</a> · <a href="/platform/advanced">Advanced platform tools</a></p>
+{% endblock %}

@@ -1,5 +1,4 @@
-# Chutes AI Manager (dashboard + CLI)
-chutes>=0.1.0
+# Dashboard + CLI (no chutes SDK — avoids Windows netifaces / MSVC build issues)
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
 pydantic>=2.0.0
@@ -7,7 +6,7 @@ PyYAML>=6.0
 Jinja2>=3.1.0
 python-multipart>=0.0.6
 
-# Optional: local MusicGen / ML experiments (not required for dashboard only)
+# Optional: local MusicGen / ML experiments
 # torch>=2.0.0
 # torchaudio>=2.0.0
 # audiocraft>=1.0.0

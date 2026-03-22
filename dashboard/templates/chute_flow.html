@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Deploy {{ name }} · Chutes{% endblock %}
+{% block content %}
+<p class="page-kicker"><a href="/">← Home</a></p>
+
+<h1>Deploy: {{ name }}</h1>
+
+{% if load_error %}
+<div class="warn">
+  <strong>Could not read this chute’s settings.</strong> {{ load_error }}
+  <a href="/config/{{ name }}/edit">Edit in advanced (YAML)</a>
+</div>
+{% else %}
+<p class="muted page-lead">{{ chute_type }} · {{ username }} · model {{ model_name }}</p>
+{% endif %}
+
+<div class="connection-strip connection-strip--compact">
+  <div class="connection-item {% if api_key_configured %}ok{% else %}warn{% endif %}">
+    <span class="connection-item__label">Account</span>
+    <span class="connection-item__value">{% if api_key_configured %}Connected{% else %}Add key{% endif %}</span>
+  </div>
+  <div class="connection-item {% if chutes_cli_on_path %}ok{% else %}warn{% endif %}">
+    <span class="connection-item__label">CLI</span>
+    <span class="connection-item__value">{% if chutes_cli_on_path %}Ready{% else %}Missing{% endif %}</span>
+  </div>
+  <div class="connection-strip__links">
+    <a href="/settings/account">Account</a>
+    <a href="/diagnostics">Diagnostics</a>
+  </div>
+</div>
+
+{% if is_windows %}
+<div class="warn win-cli-warn">
+  <strong>You’re on Windows only — that’s OK.</strong> The <code>chutes</code> tool from PyPI <strong>does not run in normal Windows Python</strong> (you may see <code>No module named 'pwd'</code>). You don’t need another computer: turn on <strong>WSL2</strong> — Linux <em>inside</em> Windows (free). Install Ubuntu from the Store or run <code class="mono">wsl --install</code> in an admin PowerShell, then in Ubuntu install Python, <code class="mono">pip install … chutes</code>, and run <strong>Build</strong> / <strong>Publish</strong> from there (your project can live under <code class="mono">/mnt/c/…</code> so it’s the same folder). <strong>Prepare</strong> (step 1) below usually works in Windows. Full steps: see the README section <strong>“Windows only?”</strong>.
+</div>
+{% endif %}
+
+<p class="muted small">Do these steps in order. Build and publish can take several minutes.</p>
+
+<ol class="deploy-steps" id="deploy-steps" data-chute-name="{{ name }}">
+  <li class="deploy-step" data-step="prepare">
+    <div class="deploy-step__head">
+      <span class="deploy-step__num">1</span>
+      <div>
+        <h2 class="deploy-step__title">Prepare</h2>
+        <p class="deploy-step__desc">Creates the files the Chutes tool needs on your computer.</p>
+      </div>
+    </div>
+    <div class="deploy-step__status" id="step-prepare-status" aria-live="polite"></div>
+    <button type="button" class="btn js-step-run" data-step="prepare">Run prepare</button>
+    <details class="deploy-step__details"><summary>Show details</summary><pre class="log log--compact" id="step-prepare-out"></pre></details>
+  </li>
+
+  <li class="deploy-step" data-step="build">
+    <div class="deploy-step__head">
+      <span class="deploy-step__num">2</span>
+      <div>
+        <h2 class="deploy-step__title">Build</h2>
+        <p class="deploy-step__desc">Builds your image. Stay on this page until it finishes.</p>
+      </div>
+    </div>
+    <div class="deploy-step__status" id="step-build-status" aria-live="polite"></div>
+    <button type="button" class="btn js-step-run" data-step="build">Run build</button>
+    <details class="deploy-step__details"><summary>Show details</summary><pre class="log log--compact" id="step-build-out"></pre></details>
+  </li>
+
+  <li class="deploy-step" data-step="publish">
+    <div class="deploy-step__head">
+      <span class="deploy-step__num">3</span>
+      <div>
+        <h2 class="deploy-step__title">Publish</h2>
+        <p class="deploy-step__desc">Uploads to Chutes. This may cost money — confirm when asked.</p>
+      </div>
+    </div>
+    <div class="deploy-step__status" id="step-publish-status" aria-live="polite"></div>
+    <button type="button" class="btn js-step-run" data-step="publish">Publish to Chutes</button>
+    <details class="deploy-step__details"><summary>Show details</summary><pre class="log log--compact" id="step-publish-out"></pre></details>
+  </li>
+
+  <li class="deploy-step" data-step="status">
+    <div class="deploy-step__head">
+      <span class="deploy-step__num">4</span>
+      <div>
+        <h2 class="deploy-step__title">Check status</h2>
+        <p class="deploy-step__desc">See if this chute appears on your Chutes account.</p>
+      </div>
+    </div>
+    <div class="deploy-step__status" id="step-status-status" aria-live="polite"></div>
+    <button type="button" class="btn secondary js-step-run" data-step="status">Refresh status</button>
+    <div id="step-status-live" class="step-status-live"></div>
+    <details class="deploy-step__details"><summary>Show details</summary><pre class="log log--compact" id="step-status-out"></pre></details>
+  </li>
+</ol>
+
+<p class="muted small"><a href="/config/{{ name }}/edit">Advanced: edit YAML</a> · <a href="/platform/advanced">Advanced platform tools</a></p>
+
+<script src="/static/js/chute_flow.js"></script>
+{% endblock %}
