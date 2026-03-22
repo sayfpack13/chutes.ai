@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -23,21 +24,32 @@ class CommandResult:
     stderr: str
 
 
-def chutes_executable() -> Optional[str]:
-    """Return path to ``chutes`` on PATH, or None if not installed / not visible."""
-    return shutil.which("chutes")
+def chutes_executable(repo_root: Optional[Path | str] = None) -> Optional[str]:
+    """Return path to ``chutes`` on PATH, or under ``<repo>/.venv`` if present."""
+    found = shutil.which("chutes")
+    if found:
+        return found
+    root = Path(repo_root) if repo_root is not None else REPO_ROOT_DEFAULT
+    if sys.platform == "win32":
+        candidate = root / ".venv" / "Scripts" / "chutes.exe"
+    else:
+        candidate = root / ".venv" / "bin" / "chutes"
+    if candidate.is_file():
+        return str(candidate)
+    return None
 
 
-def chutes_on_path() -> bool:
-    return chutes_executable() is not None
+def chutes_on_path(repo_root: Optional[Path | str] = None) -> bool:
+    return chutes_executable(repo_root) is not None
 
 
 def _missing_chutes_result() -> CommandResult:
     msg = (
-        "chutes CLI not found on PATH. Install with: pip install -r requirements-chutes.txt "
-        "(or pip install chutes), then restart the terminal. "
-        "On Windows you may need Visual C++ Build Tools for dependencies."
+        "chutes CLI not found. In the project venv run: pip install -r requirements-chutes.txt "
+        "(or pip install chutes), then restart the dashboard process so PATH includes .venv/bin."
     )
+    if sys.platform == "win32":
+        msg += " On Windows, MSVC may be required if pip builds netifaces from source."
     return CommandResult(ok=False, returncode=-1, stdout="", stderr=msg)
 
 
@@ -47,10 +59,10 @@ def run_chutes(
     timeout: Optional[int] = None,
     repo_root: Optional[Path | str] = None,
 ) -> CommandResult:
-    exe = chutes_executable()
+    root = Path(repo_root) if repo_root is not None else REPO_ROOT_DEFAULT
+    exe = chutes_executable(root)
     if not exe:
         return _missing_chutes_result()
-    root = Path(repo_root) if repo_root is not None else REPO_ROOT_DEFAULT
     env = subprocess_env_with_credentials(root)
     cmd = [exe, *args]
     proc = subprocess.run(

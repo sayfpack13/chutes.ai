@@ -107,9 +107,9 @@ async def settings_account(request: Request):
     creds = load_credentials(ROOT)
     ini_path = write_minimal_chutes_ini(ROOT, creds)
     return templates.TemplateResponse(
+        request,
         "settings_account.html",
         {
-            "request": request,
             "creds": creds,
             "key_masked": mask_api_key(creds.api_key),
             "generated_ini": str(ini_path.relative_to(ROOT)) if ini_path else "",
@@ -169,9 +169,9 @@ async def index(request: Request):
             rows.append({"name": n, "error": str(exc)})
     creds = load_credentials(ROOT)
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "rows": rows,
             "root": "",
             "api_key_configured": bool(creds.api_key.strip()),
@@ -216,8 +216,9 @@ async def config_new_form(request: Request, template: str = "music"):
     if template not in names:
         template = names[0]
     return templates.TemplateResponse(
+        request,
         "config_new.html",
-        {"request": request, "templates": names, "selected": template},
+        {"templates": names, "selected": template},
     )
 
 
@@ -256,8 +257,9 @@ async def config_edit(request: Request, name: str):
         raise HTTPException(404, "config not found")
     raw = path.read_text(encoding="utf-8")
     return templates.TemplateResponse(
+        request,
         "config_edit.html",
-        {"request": request, "name": name, "yaml_text": raw},
+        {"name": name, "yaml_text": raw},
     )
 
 
@@ -304,9 +306,9 @@ async def chute_flow_page(request: Request, name: str):
         load_error = str(exc)
     creds = load_credentials(ROOT)
     return templates.TemplateResponse(
+        request,
         "chute_flow.html",
         {
-            "request": request,
             "name": name,
             "chute_type": chute_type,
             "username": username,
@@ -377,9 +379,9 @@ async def diagnostics_page(request: Request):
     except Exception as e:
         res = CommandResult(ok=False, returncode=-1, stdout="", stderr=str(e))
     return templates.TemplateResponse(
+        request,
         "diagnostics.html",
         {
-            "request": request,
             "api_key_configured": bool(creds.api_key.strip()),
             "chutes_on_path": chutes_on_path(),
             "api_base_url": creds.effective_base_url(),
@@ -433,9 +435,9 @@ async def platform_redirect():
 async def platform_advanced_page(request: Request):
     base, key = _api_context()
     return templates.TemplateResponse(
+        request,
         "platform.html",
         {
-            "request": request,
             "api_base_url": base,
             "has_api_key": bool(key),
         },

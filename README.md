@@ -30,8 +30,10 @@ pip install -r requirements.txt
 
 ```powershell
 pip install -r requirements-chutes.txt
-chutes auth login
+chutes register
 ```
+
+(`chutes auth login` was removed from the CLI; first-time account setup is [`chutes register`](https://chutes.ai/docs/cli/account), which writes `~/.chutes/config.ini`. Create an API key with `chutes keys create --name admin --admin` if you need one for scripts or CI.)
 
 If that fails with **Microsoft Visual C++ 14.0 or greater is required**, either:
 
@@ -52,7 +54,7 @@ The Chutes CLI **does not run in normal Windows Python** — you’ll see **`No 
    cd /mnt/c/Users/YOUR_USER/OneDrive/Desktop/chutes.ai   # path to this repo from Windows drives
    python3 -m venv .venv && source .venv/bin/activate
    pip install -r requirements.txt -r requirements-chutes.txt
-   chutes auth login
+   chutes register
    ```
 4. Run **Build / Publish** from that Ubuntu terminal (`chutes build …`, `chutes deploy …`), or start the dashboard from WSL and open `http://127.0.0.1:8765` in **Windows** Edge/Chrome (it still works).
 

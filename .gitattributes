@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Shell scripts must use LF or shebang breaks on Linux/WSL (bash\r)
+*.sh text eol=lf
