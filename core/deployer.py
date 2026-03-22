@@ -4,12 +4,13 @@ Wrapper around the ``chutes`` CLI for build / deploy / status / logs.
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, Iterator, List, Optional
 
 from .credentials_store import subprocess_env_with_credentials
 
@@ -92,6 +93,117 @@ def build_chute(
         args.append("--wait")
     # Image builds can take a long time
     return run_chutes(args, cwd=cwd, timeout=3600, repo_root=repo_root)
+
+
+def iter_chutes_stream_ndjson(
+    args: List[str],
+    cwd: Optional[Path | str] = None,
+    repo_root: Optional[Path | str] = None,
+    timeout: Optional[int] = None,
+    *,
+    result_extras: Optional[Dict[str, object]] = None,
+) -> Iterator[str]:
+    """
+    Run ``chutes`` with merged stdout/stderr, yielding **NDJSON** lines (``\\n``-terminated).
+
+    Each line is a JSON object: ``{"type":"log","message":"..."}`` or final
+    ``{"type":"result","ok":bool,"returncode":int,"stdout":"...","stderr":""}``.
+    """
+    root = Path(repo_root) if repo_root is not None else REPO_ROOT_DEFAULT
+    exe = chutes_executable(root)
+    if not exe:
+        miss = _missing_chutes_result()
+        yield json.dumps({"type": "log", "message": miss.stderr.strip()}) + "\n"
+        res: Dict[str, object] = {
+            "type": "result",
+            "ok": False,
+            "returncode": miss.returncode,
+            "stdout": "",
+            "stderr": miss.stderr,
+        }
+        if result_extras:
+            res.update(result_extras)
+        yield json.dumps(res) + "\n"
+        return
+
+    env = dict(subprocess_env_with_credentials(root))
+    env.setdefault("PYTHONUNBUFFERED", "1")
+    cmd = [exe, *args]
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    accumulated: List[str] = []
+    rc = -1
+    assert proc.stdout is not None
+    try:
+        for line in proc.stdout:
+            accumulated.append(line)
+            yield json.dumps({"type": "log", "message": line.rstrip("\r\n")}) + "\n"
+    finally:
+        try:
+            proc.stdout.close()
+        except OSError:
+            pass
+        try:
+            rc = proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                pass
+            yield json.dumps(
+                {"type": "log", "message": "[dashboard] command timed out"}
+            ) + "\n"
+            rc = -124
+
+    full = "".join(accumulated)
+    out: Dict[str, object] = {
+        "type": "result",
+        "ok": rc == 0,
+        "returncode": rc,
+        "stdout": full,
+        "stderr": "",
+    }
+    if result_extras:
+        out.update(result_extras)
+    yield json.dumps(out) + "\n"
+
+
+def iter_build_chute_stream(
+    module_ref: str,
+    cwd: Path,
+    repo_root: Optional[Path | str] = None,
+) -> Iterator[str]:
+    """Stream ``chutes build <ref> --wait`` as NDJSON lines."""
+    return iter_chutes_stream_ndjson(
+        ["build", module_ref, "--wait"],
+        cwd=cwd,
+        repo_root=repo_root,
+        timeout=3600,
+        result_extras={"ref": module_ref},
+    )
+
+
+def iter_deploy_chute_stream(
+    module_ref: str,
+    cwd: Path,
+    repo_root: Optional[Path | str] = None,
+) -> Iterator[str]:
+    """Stream ``chutes deploy <ref> --accept-fee`` as NDJSON lines."""
+    return iter_chutes_stream_ndjson(
+        ["deploy", module_ref, "--accept-fee"],
+        cwd=cwd,
+        repo_root=repo_root,
+        timeout=600,
+        result_extras={"ref": module_ref},
+    )
 
 
 def deploy_chute(

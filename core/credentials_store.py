@@ -13,16 +13,20 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ManagerCredentials(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     """Credentials managed by this repo (not the same as ~/.chutes/config.ini wallet auth)."""
 
     api_key: str = Field(default="", description="Secret from chutes keys create (often cpk_...)")
     api_base_url: str = Field(default="https://api.chutes.ai")
     # If set, CHUTES_CONFIG_PATH points here and we do not synthesize a minimal ini.
     chutes_config_path: str = Field(default="", description="Optional path to your config.ini")
+    # Shown on chutes.ai Settings; required for POST /users/change_bt_auth from a website account.
+    account_fingerprint: str = Field(default="", description="Account fingerprint (wallet link / some API calls)")
 
     def effective_base_url(self) -> str:
         return (self.api_base_url or "https://api.chutes.ai").rstrip("/")
@@ -78,15 +82,16 @@ def mask_api_key(key: str, keep: int = 6) -> str:
 
 def write_minimal_chutes_ini(repo_root: Path | str, creds: ManagerCredentials) -> Optional[Path]:
     """
-    Write a minimal config.ini for tools that read api_key from [auth].
-    Skipped if user supplied chutes_config_path or no api_key.
+    Write a minimal config.ini (API key + base URL) under ``.local/`` for reference or ad‑hoc tools.
+
+    The official ``chutes`` CLI does **not** use this for build/deploy: it needs a full
+    ``~/.chutes/config.ini`` from ``chutes register`` (``user_id``, hotkey fields, etc.).
     """
     key = creds.api_key.strip()
     if not key or creds.chutes_config_path.strip():
         return None
     out = generated_cli_config_path(repo_root)
     base = creds.effective_base_url()
-    # Common patterns; CLI may also require wallet fields from `chutes register`.
     text = (
         f"[api]\n"
         f"base_url = {base}\n\n"
@@ -104,6 +109,10 @@ def write_minimal_chutes_ini(repo_root: Path | str, creds: ManagerCredentials) -
 def subprocess_env_with_credentials(repo_root: Path | str) -> dict[str, str]:
     """
     Environment variables for ``chutes`` subprocess calls.
+
+    Never points ``CHUTES_CONFIG_PATH`` at the generated minimal ``.local/chutes_config.ini``:
+    current Chutes requires ``[auth]`` keys such as ``user_id`` and hotkey material from
+    ``chutes register``. Use the user's explicit path or ``~/.chutes/config.ini`` when present.
     """
     env = dict(os.environ)
     creds = load_credentials(repo_root)
@@ -114,9 +123,9 @@ def subprocess_env_with_credentials(repo_root: Path | str) -> dict[str, str]:
     if cfg_path:
         env["CHUTES_CONFIG_PATH"] = cfg_path
     else:
-        ini = write_minimal_chutes_ini(repo_root, creds)
-        if ini is not None:
-            env["CHUTES_CONFIG_PATH"] = str(ini.resolve())
+        home_ini = Path.home() / ".chutes" / "config.ini"
+        if home_ini.is_file():
+            env["CHUTES_CONFIG_PATH"] = str(home_ini.resolve())
 
     key = creds.api_key.strip()
     if key:
@@ -133,6 +142,8 @@ def parse_settings_form(
     chutes_config_path: str,
     existing: ManagerCredentials,
     clear_key: bool = False,
+    account_fingerprint: str = "",
+    clear_fingerprint: bool = False,
 ) -> ManagerCredentials:
     """Empty api_key means keep existing unless clear_key."""
     key = (api_key or "").strip()
@@ -144,8 +155,15 @@ def parse_settings_form(
     url = (api_base_url or "").strip() or existing.api_base_url or "https://api.chutes.ai"
     cfg = (chutes_config_path or "").strip()
 
+    fp = (account_fingerprint or "").strip()
+    if clear_fingerprint:
+        fp = ""
+    elif not fp:
+        fp = existing.account_fingerprint
+
     return ManagerCredentials(
         api_key=key,
         api_base_url=url,
         chutes_config_path=cfg,
+        account_fingerprint=fp,
     )

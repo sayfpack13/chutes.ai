@@ -85,7 +85,7 @@ Open [http://127.0.0.1:8765](http://127.0.0.1:8765). On first run, built-in temp
 3. **Deploy** (`/chute/<name>`): **Prepare** → **Build** → **Publish** → **Check status** (plain-language copy; same backend as generate/build/deploy APIs).
 4. **New chute** (`/config/new`): pick a template and name; you’re sent to the **Deploy** page for that chute (YAML is still on disk under `configs/`).
 
-**Security:** the dashboard has **no login** — use it on **localhost** only. Secrets live in **`.local/credentials.json`** (gitignored); the app passes **`CHUTES_API_URL`**, **`CHUTES_CONFIG_PATH`**, and **`CHUTES_API_KEY`** to the `chutes` CLI when you build/publish.
+**Security:** this **dashboard** has **no login** — run it on **localhost** only (don’t expose its port to the internet). That applies to this manager UI on your PC, **not** to where inference runs: **deployed chutes execute on Chutes.ai**. Secrets live in **`.local/credentials.json`** (gitignored). For **build/publish**, the `chutes` subprocess gets **`CHUTES_API_URL`**, your registered **`config.ini`** (path you set, or `~/.chutes/config.ini` if that file exists), and **`CHUTES_API_KEY`** when saved — not the API-key-only helper file under `.local/`.
 
 ### Advanced (YAML, diagnostics, full API browser)
 

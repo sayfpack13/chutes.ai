@@ -155,6 +155,73 @@ def api_get_authenticated(
     )
 
 
+def api_post_change_bt_auth(
+    base_url: str,
+    api_key: str,
+    json_body: Mapping[str, Any],
+    *,
+    fingerprint: Optional[str] = None,
+    timeout: float = 120.0,
+) -> Dict[str, Any]:
+    """
+    POST /users/change_bt_auth — link Bittensor coldkey/hotkey to a website-created account.
+
+    The API often expects ``Authorization`` to be the account **fingerprint** (Settings on
+    chutes.ai), not a cpk API key. ``api_request_authenticated`` stops on the first non-401
+    response, so a 422 from Bearer auth would block other styles; this helper tries several.
+    """
+    url = _build_url(base_url, "/users/change_bt_auth", None)
+    body_bytes = json.dumps(dict(json_body)).encode("utf-8")
+    result: Dict[str, Any] = {
+        "ok": False,
+        "status": 0,
+        "url": url,
+        "method": "POST",
+        "data": None,
+        "error": "",
+    }
+
+    attempts: List[Dict[str, str]] = []
+    fp = (fingerprint or "").strip()
+    if fp:
+        for auth_val in (fp, f"Bearer {fp}", f"Basic {fp}"):
+            attempts.append(
+                {
+                    "Authorization": auth_val,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                }
+            )
+    for auth in auth_header_variants(api_key):
+        if "Authorization" not in auth:
+            continue
+        attempts.append({**auth, "Content-Type": "application/json"})
+
+    last_code = 0
+    last_text = ""
+    for headers in attempts:
+        code, text = _http_request("POST", url, headers, body_bytes, timeout=timeout)
+        last_code, last_text = code, text
+        if 200 <= code < 300:
+            result["ok"] = True
+            result["status"] = code
+            if text.strip():
+                try:
+                    result["data"] = json.loads(text)
+                except json.JSONDecodeError:
+                    result["data"] = text
+            return result
+        if code in (401, 403, 422):
+            continue
+        result["status"] = code
+        result["error"] = text[:4000]
+        return result
+
+    result["status"] = last_code
+    result["error"] = last_text[:4000] or "No successful auth variant."
+    return result
+
+
 def probe_chutes_api(api_key: str, base_url: str) -> Dict[str, object]:
     """
     Backwards-compatible probe: find a working GET list path + auth (for health checks).

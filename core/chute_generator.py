@@ -153,8 +153,7 @@ import io
 import uuid
 from typing import Optional
 
-import torch
-import torchaudio
+# torch/torchaudio are lazy-imported so `chutes build` can load this module without a local GPU stack.
 from fastapi import HTTPException
 from fastapi.responses import Response
 from loguru import logger
@@ -212,6 +211,7 @@ DEFAULT_HF_ID = {repr(model_id)}
 
 @chute.on_startup()
 async def load_model(self):
+    import torch
     from audiocraft.models import MusicGen
 
     self.torch = torch
@@ -237,6 +237,8 @@ async def load_model(self):
     output_content_type="audio/wav",
 )
 async def generate_music(self, data: MusicGenerationRequest) -> Response:
+    import torch
+    import torchaudio
     from audiocraft.models import MusicGen
 
     key = data.model
@@ -272,6 +274,8 @@ async def generate_music(self, data: MusicGenerationRequest) -> Response:
     output_content_type="application/json",
 )
 async def health(self) -> HealthStatus:
+    import torch
+
     loaded = bool(getattr(self, "models", None))
     gpu = torch.cuda.is_available()
     st = "healthy" if loaded and gpu else "degraded"

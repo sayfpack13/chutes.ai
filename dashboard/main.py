@@ -8,6 +8,7 @@ Run from repo root:
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from typing import Optional
@@ -20,7 +21,7 @@ import yaml
 from urllib.parse import quote
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -38,9 +39,12 @@ from core import (
     seed_builtin_templates,
     write_chute_module,
 )
+from core.deployer import iter_build_chute_stream, iter_deploy_chute_stream
+from core.bittensor_wallet import resolve_bittensor_ss58
 from core.chutes_api_client import (
     api_get_authenticated,
     api_get_public,
+    api_post_change_bt_auth,
     api_request_authenticated,
     probe_chutes_api,
 )
@@ -112,6 +116,7 @@ async def settings_account(request: Request):
         {
             "creds": creds,
             "key_masked": mask_api_key(creds.api_key),
+            "fingerprint_masked": mask_api_key(creds.account_fingerprint, keep=4),
             "generated_ini": str(ini_path.relative_to(ROOT)) if ini_path else "",
         },
     )
@@ -122,7 +127,9 @@ async def settings_account_save(
     api_key: str = Form(""),
     api_base_url: str = Form(""),
     chutes_config_path: str = Form(""),
+    account_fingerprint: str = Form(""),
     clear_key: Optional[str] = Form(None),
+    clear_fingerprint: Optional[str] = Form(None),
 ):
     existing = load_credentials(ROOT)
     new_creds = parse_settings_form(
@@ -131,6 +138,8 @@ async def settings_account_save(
         chutes_config_path=chutes_config_path,
         existing=existing,
         clear_key=bool(clear_key),
+        account_fingerprint=account_fingerprint,
+        clear_fingerprint=bool(clear_fingerprint),
     )
     save_credentials(ROOT, new_creds)
     write_minimal_chutes_ini(ROOT, new_creds)
@@ -147,6 +156,53 @@ async def api_probe(
     key = (api_key or "").strip() or existing.api_key
     base = (api_base_url or "").strip() or existing.api_base_url
     return probe_chutes_api(key, base)
+
+
+@app.post("/api/account/link-bittensor")
+async def api_account_link_bittensor(
+    fingerprint: str = Form(""),
+    coldkey: str = Form(""),
+    hotkey: str = Form(""),
+):
+    """
+    POST /users/change_bt_auth using the saved API key and fingerprint (website → local wallet).
+    """
+    creds = load_credentials(ROOT)
+    key = creds.api_key.strip()
+    fp = (fingerprint or "").strip() or creds.account_fingerprint.strip()
+    if not fp:
+        return {
+            "ok": False,
+            "error": "Fingerprint required: paste it under Account (Advanced) and Save, or send it in this request.",
+        }
+    if not key:
+        return {"ok": False, "error": "Save an API key on the Account page first."}
+
+    wr = Path.home() / ".bittensor" / "wallets"
+    cold_ss58, hot_ss58, err = resolve_bittensor_ss58(
+        wallets_root=wr,
+        coldkey=(coldkey or "").strip(),
+        hotkey=(hotkey or "").strip(),
+    )
+    if err:
+        return {"ok": False, "error": err}
+
+    r = api_post_change_bt_auth(
+        creds.effective_base_url(),
+        key,
+        {"coldkey": cold_ss58, "hotkey": hot_ss58},
+        fingerprint=fp,
+        timeout=90.0,
+    )
+    out = {
+        "ok": r.get("ok", False),
+        "status": r.get("status"),
+        "coldkey": cold_ss58,
+        "hotkey": hot_ss58,
+        "data": r.get("data"),
+        "error": (r.get("error") or "")[:4000],
+    }
+    return out
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -348,6 +404,68 @@ async def api_build(name: str):
     if hint:
         out["hint"] = hint
     return out
+
+
+@app.post("/api/build/{name}/stream")
+async def api_build_stream(name: str):
+    """Stream ``chutes build`` stdout/stderr as NDJSON (``application/x-ndjson``)."""
+    m = manager()
+
+    def error_stream(msg: str):
+        yield json.dumps({"type": "log", "message": msg}) + "\n"
+        yield json.dumps(
+            {
+                "type": "result",
+                "ok": False,
+                "returncode": -1,
+                "stdout": "",
+                "stderr": msg,
+                "ref": "",
+            }
+        ) + "\n"
+
+    try:
+        cfg = m.load_config(name)
+    except Exception as e:
+        return StreamingResponse(error_stream(str(e)), media_type="application/x-ndjson")
+
+    ref = module_ref(cfg)
+    cwd = ROOT / "chute_packages"
+    return StreamingResponse(
+        iter_build_chute_stream(ref, cwd=cwd, repo_root=ROOT),
+        media_type="application/x-ndjson",
+    )
+
+
+@app.post("/api/deploy/{name}/stream")
+async def api_deploy_stream(name: str):
+    """Stream ``chutes deploy`` stdout/stderr as NDJSON."""
+    m = manager()
+
+    def error_stream(msg: str):
+        yield json.dumps({"type": "log", "message": msg}) + "\n"
+        yield json.dumps(
+            {
+                "type": "result",
+                "ok": False,
+                "returncode": -1,
+                "stdout": "",
+                "stderr": msg,
+                "ref": "",
+            }
+        ) + "\n"
+
+    try:
+        cfg = m.load_config(name)
+    except Exception as e:
+        return StreamingResponse(error_stream(str(e)), media_type="application/x-ndjson")
+
+    ref = module_ref(cfg)
+    cwd = ROOT / "chute_packages"
+    return StreamingResponse(
+        iter_deploy_chute_stream(ref, cwd=cwd, repo_root=ROOT),
+        media_type="application/x-ndjson",
+    )
 
 
 @app.post("/api/deploy/{name}")
