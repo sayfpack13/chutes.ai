@@ -1,0 +1,74 @@
+name: wan-i2v-audio
+chute_type: video
+username: sayfpack
+tagline: Wan 2.2 I2V + MusicGen - Video with AI soundtrack
+description: |
+  # Video Generation with AI Soundtrack
+  
+  Combines Wan 2.2 I2V for video generation with MusicGen for AI-generated soundtrack.
+  
+  ## Features
+  - Image-to-video generation
+  - AI-generated music soundtrack matching the video mood
+  - Automatic audio-video synchronization
+  - Configurable video duration, FPS, and music style
+  
+  ## Usage
+  POST to /generate with:
+  - `prompt`: Description of the video content
+  - `music_prompt`: Description of desired music style (optional, auto-generated if omitted)
+  - `image`: URL or base64-encoded input image
+  - `duration`: Video duration in seconds (default 5)
+  - `fps`: Frames per second (default 16)
+  - `guidance_scale`: Video guidance strength
+model:
+  source: huggingface
+  name: Wan-AI/Wan2.2-I2V-A14B-Diffusers
+  revision: main
+  trust_remote_code: true
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 48
+  include:
+  - a100
+  - h100
+  exclude: []
+docker:
+  base_image: parachutes/base-python:3.12.7
+  python_version: '3.12'
+  system_packages:
+  - ffmpeg
+  - git
+  python_packages:
+  - torch
+  - diffusers>=0.33.0
+  - transformers
+  - accelerate
+  - safetensors
+  - pillow
+  - numpy
+  - audiocraft
+  - torchaudio
+  extra_pip_index: null
+  env_vars:
+    HF_HOME: /app/models
+    AUDIOCRAFT_CACHE: /app/models
+  image_name: wan-i2v-audio
+  image_tag: '1.0.0'
+  image_readme: 'Wan 2.2 I2V + MusicGen - Video with AI soundtrack'
+api:
+- path: /generate
+  method: POST
+  input_schema: VideoWithAudioRequest
+  output_content_type: video/mp4
+  stream: false
+  description: Generate video with AI soundtrack from image
+- path: /health
+  method: GET
+  input_schema: None
+  output_content_type: application/json
+  stream: false
+  description: Health check
+concurrency: 1
+allow_external_egress: true
+shutdown_after_seconds: 600

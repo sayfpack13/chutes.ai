@@ -1,0 +1,75 @@
+name: wan-i2v-fast
+chute_type: video
+username: sayfpack
+tagline: Wan 2.2 I2V 14B Fast - Image to video with PrunaAI speed-ups
+description: |
+  # Wan 2.2 I2V 14B Fast
+  
+  Image to video generation with Wan 2.2 using PrunaAI speed-ups.
+  
+  ## Features
+  - Image-to-video generation from text prompts
+  - 480p resolution support
+  - Fast inference with PrunaAI optimization
+  - Configurable FPS, frames, and guidance scale
+  
+  ## Usage
+  POST to /generate with:
+  - `prompt`: Text description of desired video
+  - `image`: URL to the input image
+  - `fps`: Frames per second (default 16)
+  - `frames`: Number of frames to generate (default 81)
+  - `guidance_scale`: Guidance strength (default 1.0)
+  - `seed`: Random seed for reproducibility
+  - `negative_prompt`: What to avoid in generation
+model:
+  source: huggingface
+  name: Wan-AI/Wan2.2-I2V-A14B-Diffusers
+  revision: main
+  trust_remote_code: true
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 48
+  include:
+  - a100
+  - h100
+  exclude: []
+docker:
+  base_image: parachutes/base-python:3.12.7
+  python_version: '3.12'
+  system_packages:
+  - ffmpeg
+  - git
+  python_packages:
+  - torch
+  - diffusers>=0.33.0
+  - transformers
+  - accelerate
+  - safetensors
+  - pillow
+  - numpy
+  extra_pip_index: null
+  env_vars:
+    HF_HOME: /app/models
+  image_name: wan-i2v-fast
+  image_tag: '1.0.0'
+  image_readme: 'Wan 2.2 I2V 14B Fast - Image to video generation'
+api:
+- path: /generate
+  method: POST
+  input_schema: VideoGenerationRequest
+  output_content_type: video/mp4
+  stream: false
+  description: Generate video from image and text prompt
+- path: /health
+  method: GET
+  input_schema: None
+  output_content_type: application/json
+  stream: false
+  description: Health check
+concurrency: 1
+allow_external_egress: true
+shutdown_after_seconds: 600
+engine_args: {}
+template_max_instances: 1
+template_scaling_threshold: 0.75

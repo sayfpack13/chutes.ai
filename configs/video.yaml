@@ -1,0 +1,66 @@
+name: video
+chute_type: video
+username: your_username
+tagline: Video generation
+description: '# Video generation
+
+
+  Scaffold for hosted video models (text-to-video, image-to-video). Wire your inference
+  stack and dependencies in the generated module.
+
+
+  See the Chutes example: https://chutes.ai/docs/examples/video-generation
+
+  '
+model:
+  source: huggingface
+  name: Wan-AI/Wan2.1-T2V-14B
+  revision: main
+  trust_remote_code: false
+  custom_download_url: null
+hardware:
+  gpu_count: 1
+  min_vram_gb_per_gpu: 24
+  include:
+  - rtx4090
+  - a100
+  exclude: []
+docker:
+  base_image: nvidia/cuda:12.1-runtime-ubuntu22.04
+  python_version: '3.11'
+  system_packages:
+  - git
+  - curl
+  - ffmpeg
+  python_packages:
+  - torch
+  - transformers
+  - accelerate
+  extra_pip_index: https://download.pytorch.org/whl/cu121
+  env_vars:
+    HF_HOME: /app/models
+  image_name: ''
+  image_tag: 1.0.0
+  image_readme: ''
+api:
+- path: /generate
+  method: POST
+  input_schema: VideoGenerationRequest
+  output_content_type: video/mp4
+  stream: false
+  description: Generate video from prompt or conditioning input
+- path: /health
+  method: GET
+  input_schema: None
+  output_content_type: application/json
+  stream: false
+  description: Health check
+concurrency: 1
+allow_external_egress: true
+shutdown_after_seconds: 300
+engine_args: {}
+template_max_instances: 1
+template_scaling_threshold: 0.75
+embedding_pooling_type: auto
+embedding_max_embed_len: 3072000
+embedding_enable_chunked_processing: true
